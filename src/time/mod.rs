@@ -14,7 +14,7 @@ impl Time {
         }
     }
 
-    pub fn instant() -> Instant {
+    pub fn now() -> Instant {
         Instant::now()
     }
 

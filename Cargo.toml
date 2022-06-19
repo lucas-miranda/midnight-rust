@@ -3,6 +3,22 @@ name = "thunder_raccoon"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["vulkan-backend", "shader-shaderc"] #["no-backend"]
+
+no-backend = []
+metal-backend = ["wgpu-hal/metal"]
+dx12-backend = ["wgpu-hal/dx12"]
+dx11-backend = ["wgpu-hal/dx11"]
+vulkan-backend = ["wgpu-hal/vulkan"]
+gl-backend = ["wgpu-hal/gles"]
+shader-naga = ["dep:naga"]
+shader-shaderc = ["dep:shaderc"]
+
 [dependencies]
 num-traits = "^0.2.15"
 winit = "^0.26.1"
+wgpu-hal = { git = "https://github.com/gfx-rs/wgpu/" }
+wgpu-types = { git = "https://github.com/gfx-rs/wgpu/" }
+naga = { version = "^0.8.5", features = ["glsl-in", "spv-out"], optional = true }
+shaderc = { version = "^0.8.0", optional = true }

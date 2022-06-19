@@ -1,4 +1,5 @@
 use winit::{
+    dpi::{LogicalSize, PhysicalSize},
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
 };
@@ -36,6 +37,21 @@ impl WindowContext {
         WindowBuilder::new(&self)
     }
 
+    pub fn calculate_window_size(
+        &self,
+        target_size: (u32, u32)
+    ) -> (LogicalSize<u32>, PhysicalSize<u32>) {
+        let dpi = match self.event_loop.primary_monitor() {
+            Some(primary) => primary.scale_factor(),
+            None => 1f64,
+        };
+
+        let logical: LogicalSize<u32> = target_size.into();
+        let physical: PhysicalSize<u32> = logical.to_physical(dpi);
+
+        (logical, physical)
+    }
+
     pub fn run<F: 'static + FnMut(winit::event::Event<()>, &mut WindowEventHandler)>(mut self, mut handler: F) {
         self.event_loop.run(move |event, _event_window_target, control_flow| {
             handler(event, &mut self.event_handler);
@@ -55,6 +71,11 @@ impl<'a> WindowBuilder<'a> {
             context,
             builder: winit::window::WindowBuilder::new(),
         }
+    }
+
+    pub fn with_inner_size<S: Into<winit::dpi::Size>>(mut self, size: S) -> Self {
+        self.builder = self.builder.with_inner_size(size);
+        self
     }
 
     pub fn build(self) -> Result<Window, &'static str> {
@@ -83,5 +104,9 @@ impl Window {
 
     pub fn request_redraw(&self) {
         self.internal_window.request_redraw();
+    }
+
+    pub(crate) fn internal_window(&self) -> &winit::window::Window {
+        &self.internal_window
     }
 }

@@ -1,0 +1,590 @@
+mod backend;
+pub use backend::GraphicBackend;
+
+mod hal;
+pub use hal::HAL;
+
+mod hal_initialize_error;
+pub use hal_initialize_error::HALInitializeError;
+
+mod render_pipeline;
+pub use render_pipeline::RenderPipeline;
+
+mod render_pipeline_operation_error;
+pub use render_pipeline_operation_error::RenderPipelineOperationError;
+
+mod render_surface;
+pub use render_surface::RenderSurface;
+
+use crate::rendering::shaders::{
+    builder::{
+        ShaderBuilder,
+        ShaderFormat,
+    },
+    ShaderData,
+};
+
+use std::{
+    iter,
+    mem::ManuallyDrop,
+    rc::{Rc, Weak},
+    borrow::Borrow,
+};
+
+use gfx_hal::{
+    adapter::Adapter,
+    command::CommandBuffer,
+    device::Device,
+    format::Format,
+    queue::family::QueueGroup,
+    window::{Extent2D, PresentationSurface, Surface},
+    Instance, prelude::QueueFamily,
+};
+
+#[cfg(feature = "no-backend")]
+use empty_backend as gfx_backend;
+
+#[cfg(feature = "vulkan-backend")]
+use vulkan_backend as gfx_backend;
+
+pub struct RenderBackend {
+    device: Weak<gfx_backend::Device>,
+    adapter: Adapter<gfx_backend::Backend>,
+    surface_color_format: Format,
+    command_buffer: <gfx_backend::Backend as gfx_hal::Backend>::CommandBuffer,
+    queue_group: QueueGroup<gfx_backend::Backend>,
+    resource_holder: ResourceHolder,
+
+    need_reconfigure_swapchain: bool,
+    requested_swapchain_size: Option<(u32, u32)>,
+    surface_extent: Extent2D,
+
+    submission_complete_fence: ManuallyDrop<<gfx_backend::Backend as gfx_hal::Backend>::Fence>,
+    rendering_complete_semaphore: ManuallyDrop<<gfx_backend::Backend as gfx_hal::Backend>::Semaphore>,
+}
+
+impl RenderBackend {
+    /*
+    pub fn new() -> Self {
+        Self {
+        }
+    }
+    */
+
+    pub fn create(window: &winit::window::Window) -> Self {
+        let (instance, surface, adapter) = {
+            let instance = gfx_backend::Instance::create("", 1)
+                .expect("Backend not supported");
+
+            let surface = unsafe {
+                instance
+                    .create_surface(&window)
+                    .expect("Failed to create surface for window")
+            };
+
+            let adapter = instance.enumerate_adapters()
+                .into_iter()
+                .find(|a| {
+                    a.queue_families.iter()
+                                    .any(|qf| qf.queue_type().supports_graphics() && surface.supports_queue_family(qf))
+                })
+                .expect("Adapter not found");
+
+            (instance, surface, adapter)
+        };
+
+        let (device, queue_group) = {
+            let queue_family = adapter
+                .queue_families
+                .iter()
+                .find(|family| {
+                    surface.supports_queue_family(family)
+                    && family.queue_type().supports_graphics()
+                })
+                .expect("No compatible queue family found");
+
+            let mut gpu = unsafe {
+                use gfx_hal::adapter::PhysicalDevice;
+
+                adapter
+                    .physical_device
+                    .open(&[(queue_family, &[1.0])], gfx_hal::Features::empty())
+                    .expect("Failed to open device")
+            };
+
+            let queue_group = match gpu.queue_groups.iter().position(|qg| qg.family == queue_family.id()) {
+                Some(index) => gpu.queue_groups.remove(index),
+                None => panic!("Queue gorup not found"),
+            };
+
+            (gpu.device, queue_group)
+        };
+
+        let (command_pool, command_buffer) = unsafe {
+            use gfx_hal::command::Level;
+            use gfx_hal::pool::{CommandPool, CommandPoolCreateFlags};
+
+            let mut command_pool = device
+                .create_command_pool(queue_group.family, CommandPoolCreateFlags::empty())
+                .expect("Out of memory");
+
+            let command_buffer = command_pool.allocate_one(Level::Primary);
+
+            (command_pool, command_buffer)
+        };
+
+        let surface_color_format = {
+            use gfx_hal::format::ChannelType;
+
+            let supported_formats = surface
+                .supported_formats(&adapter.physical_device)
+                .unwrap_or(Vec::new());
+
+            let default_format = *supported_formats.get(0).unwrap_or(&Format::Rgba8Srgb);
+
+            supported_formats
+                .into_iter()
+                .find(|format| format.base_format().1 == ChannelType::Srgb)
+                .unwrap_or(default_format)
+        };
+
+        let render_pass = {
+            use gfx_hal::{
+                image::Layout,
+                pass::{
+                    Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, SubpassDesc,
+                },
+            };
+
+            let color_attachment = Attachment {
+                format: Some(surface_color_format),
+                samples: 1,
+                ops: AttachmentOps::new(AttachmentLoadOp::Clear, AttachmentStoreOp::Store),
+                stencil_ops: AttachmentOps::DONT_CARE,
+                layouts: Layout::Undefined..Layout::Present,
+            };
+
+            let subpass = SubpassDesc {
+                colors: &[(0, Layout::ColorAttachmentOptimal)],
+                depth_stencil: None,
+                inputs: &[],
+                resolves: &[],
+                preserves: &[],
+            };
+
+            unsafe {
+                device
+                    .create_render_pass(iter::once(color_attachment), iter::once(subpass), iter::empty())
+                    .expect("Out of memory")
+            }
+        };
+
+        let pipeline_layout = unsafe {
+            device.create_pipeline_layout(iter::empty(), iter::empty())
+                  .expect("Out of memory")
+        };
+
+        let vertex_shader = include_str!("shaders/p1.vert");
+        let fragment_shader = include_str!("shaders/p1.frag");
+
+        let pipeline = unsafe {
+            Self::make_pipeline::<gfx_backend::Backend>(
+                &device,
+                &render_pass,
+                &pipeline_layout,
+                vertex_shader,
+                fragment_shader,
+            )
+        };
+
+        let submission_complete_fence = device.create_fence(true).expect("Out of memory");
+        let rendering_complete_semaphore = device.create_semaphore().expect("Out of memory");
+
+        let device = Rc::new(device);
+        let device_weak_ref = Rc::downgrade(&device);
+
+        let resource_holder = ResourceHolder::new(Resources {
+            instance,
+            surface,
+            device,
+            command_pool,
+            render_passes: vec![render_pass],
+            pipeline_layouts: vec![pipeline_layout],
+            pipelines: vec![pipeline],
+        });
+
+        Self {
+            device: device_weak_ref,
+            adapter,
+            surface_color_format,
+            command_buffer,
+            queue_group,
+            resource_holder,
+
+            need_reconfigure_swapchain: true,
+            requested_swapchain_size: None,
+            surface_extent: Extent2D {
+                width: 512,
+                height: 512,
+            },
+
+            submission_complete_fence: ManuallyDrop::new(submission_complete_fence),
+            rendering_complete_semaphore: ManuallyDrop::new(rendering_complete_semaphore),
+        }
+    }
+
+    pub fn render(&mut self) {
+        //let res = &mut self.resource_holder.resources;
+        //let render_pass = &res.render_passes[0];
+        //let pipeline = &res.pipelines[0];
+
+        unsafe {
+            use gfx_hal::pool::CommandPool;
+
+            let render_timeout_ns = 1_000_000_000;
+
+            let device = self.device.upgrade().unwrap();
+
+            device.wait_for_fence(&self.submission_complete_fence, render_timeout_ns)
+                .expect("Out of memory or device lost");
+
+            device.reset_fence(&mut self.submission_complete_fence)
+                .expect("Out of memory");
+
+            self.resource_holder.resources.command_pool.reset(false);
+        }
+
+        if self.need_reconfigure_swapchain {
+            self.configure_swapchain();
+            self.need_reconfigure_swapchain = false;
+        }
+
+        let surface_image = unsafe {
+            let acquire_timeout_ns = 1_000_000_000;
+
+            match self.resource_holder.resources.surface.acquire_image(acquire_timeout_ns) {
+                Ok((image, _)) => image,
+                Err(_) => {
+                    self.request_configure_swapchain();
+                    return;
+                }
+            }
+        };
+
+        let framebuffer = unsafe {
+            use gfx_hal::{
+                image::Extent,
+                window::SwapchainConfig,
+            };
+
+            let caps = self.resource_holder.resources.surface.capabilities(&self.adapter.physical_device);
+            let swap_config = SwapchainConfig::from_caps(&caps, self.surface_color_format, self.surface_extent);
+            let framebuffer_attachment = swap_config.framebuffer_attachment();
+
+            let device = self.device.upgrade().unwrap();
+
+            device
+               .create_framebuffer(
+                   &self.resource_holder.resources.render_passes[0],
+                   iter::once(framebuffer_attachment),
+                   Extent {
+                       width: self.surface_extent.width,
+                       height: self.surface_extent.height,
+                       depth: 1,
+                   },
+               )
+               .unwrap()
+        };
+
+        let viewport = {
+            use gfx_hal::pso::{Rect, Viewport};
+
+            Viewport {
+                rect: Rect {
+                    x: 0,
+                    y: 0,
+                    w: self.surface_extent.width as i16,
+                    h: self.surface_extent.height as i16,
+                },
+                depth: 0.0..1.0,
+            }
+        };
+
+        unsafe {
+            use gfx_hal::command::{
+                ClearColor, ClearValue, CommandBufferFlags, SubpassContents,
+                RenderAttachmentInfo,
+            };
+
+            self.command_buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
+            self.command_buffer.set_viewports(0, iter::once(viewport.clone()));
+            self.command_buffer.set_scissors(0, iter::once(viewport.rect));
+
+            self.command_buffer.bind_graphics_pipeline(&self.resource_holder.resources.pipelines[0]);
+
+            self.command_buffer.begin_render_pass(
+                &self.resource_holder.resources.render_passes[0],
+                &framebuffer,
+                viewport.rect,
+                iter::once(RenderAttachmentInfo {
+                    image_view: surface_image.borrow(),
+                    clear_value: ClearValue {
+                        color: ClearColor {
+                            float32: [0.0, 0.0, 0.0, 1.0],
+                        },
+                    }
+                }),
+                SubpassContents::Inline,
+            );
+
+            self.command_buffer.draw(0..6, 0..1);
+
+            self.command_buffer.end_render_pass();
+            self.command_buffer.finish();
+        }
+
+        unsafe {
+            use gfx_hal::queue::Queue;
+
+            self.queue_group.queues[0].submit(
+                iter::once(&self.command_buffer),
+                iter::empty(),
+                iter::once(&*self.rendering_complete_semaphore),
+                Some(&mut self.submission_complete_fence),
+            );
+
+            let result = self.queue_group.queues[0].present(
+                &mut self.resource_holder.resources.surface,
+                surface_image,
+                Some(&mut self.rendering_complete_semaphore),
+            );
+
+            if result.is_err() {
+                self.request_configure_swapchain();
+            }
+
+            let device = self.device.upgrade().unwrap();
+            device.destroy_framebuffer(framebuffer);
+        }
+    }
+
+    pub fn request_configure_swapchain(&mut self) {
+        self.need_reconfigure_swapchain = true;
+    }
+
+    pub fn request_configure_swapchain_with(&mut self, width: u32, height: u32) {
+        self.need_reconfigure_swapchain = true;
+        self.requested_swapchain_size = Some((width, height));
+    }
+
+    fn configure_swapchain(&mut self) {
+        use gfx_hal::window::SwapchainConfig;
+
+        let caps = self.resource_holder.resources.surface.capabilities(&self.adapter.physical_device);
+
+        match self.requested_swapchain_size.take() {
+            Some(size) => {
+                self.surface_extent.width = size.0;
+                self.surface_extent.height = size.1;
+            },
+            None => (),
+        }
+
+        let swapchain_config =
+            SwapchainConfig::from_caps(&caps, self.surface_color_format, self.surface_extent);
+
+        // macOS fullscreen slowdown fix
+        /*
+        if caps.image_count.contains(&3) {
+            swapchain_config.image_count = 3;
+        }
+        */
+
+        self.surface_extent = swapchain_config.extent;
+        let device = self.device.upgrade().unwrap();
+
+        unsafe {
+            self.resource_holder.resources.surface
+               .configure_swapchain(&device, swapchain_config)
+               .expect("Failed to configure swapchain");
+        };
+    }
+
+    unsafe fn make_pipeline<B: gfx_hal::Backend>(
+        device: &B::Device,
+        render_pass: &B::RenderPass,
+        pipeline_layout: &B::PipelineLayout,
+        vertex_shader: &str,
+        fragment_shader: &str,
+    ) -> B::GraphicsPipeline
+    {
+        use gfx_hal::pass::Subpass;
+        use gfx_hal::pso::{
+            BlendState, ColorBlendDesc, ColorMask, EntryPoint, Face, GraphicsPipelineDesc,
+            InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer,
+            Specialization,
+        };
+
+        let shader_builder = ShaderBuilder::default();
+
+        let shader = shader_builder.build(
+            ShaderFormat::GLSL,
+            vertex_shader,
+            fragment_shader,
+        );
+
+        let vertex_shader_module = match shader.vertex() {
+            Some(stage) => {
+                match stage.data() {
+                    ShaderData::SpirV(spirv) => Some(device
+                        .create_shader_module(&spirv)
+                        .expect("Failed to create vertex shader module")
+                    ),
+                    #[cfg(feature = "shader-naga")]
+                    ShaderData::Naga(naga_shader) => {
+                        unimplemented!();
+                    },
+                    _ => panic!("Shader data format not supported."),
+                }
+            },
+            None => None,
+        }.unwrap();
+
+        let fragment_shader_module = match shader.fragment() {
+            Some(stage) => {
+                match stage.data() {
+                    ShaderData::SpirV(spirv) => Some(device
+                        .create_shader_module(&spirv)
+                        .expect("Failed to create fragment shader module")
+                    ),
+                    #[cfg(feature = "shader-naga")]
+                    ShaderData::Naga(naga_shader) => {
+                        unimplemented!();
+                    },
+                    _ => panic!("Shader data format not supported."),
+                }
+            },
+            None => None,
+        }.unwrap();
+
+        let (vs_entry, fs_entry) = (
+            EntryPoint {
+                entry: "main",
+                module: &vertex_shader_module,
+                specialization: Specialization::EMPTY,
+            },
+            EntryPoint {
+                entry: "main",
+                module: &fragment_shader_module,
+                specialization: Specialization::EMPTY,
+            },
+        );
+
+        let primitive_assembler = PrimitiveAssemblerDesc::Vertex {
+            buffers: &[],
+            attributes: &[],
+            input_assembler: InputAssemblerDesc::new(Primitive::TriangleList),
+            vertex: vs_entry,
+            tessellation: None,
+            geometry: None,
+        };
+
+        let mut pipeline_desc = GraphicsPipelineDesc::new(
+            primitive_assembler,
+            Rasterizer {
+                cull_face: Face::NONE,
+                ..Rasterizer::FILL
+            },
+            Some(fs_entry),
+            pipeline_layout,
+            Subpass {
+                index: 0,
+                main_pass: render_pass,
+            },
+        );
+
+        pipeline_desc.blender.targets.push(ColorBlendDesc {
+            mask: ColorMask::ALL,
+            blend: Some(BlendState::ALPHA),
+        });
+
+        let pipeline = device
+            .create_graphics_pipeline(&pipeline_desc, None)
+            .expect("Failed to create graphics pipeline");
+
+        device.destroy_shader_module(vertex_shader_module);
+        device.destroy_shader_module(fragment_shader_module);
+
+        pipeline
+    }
+}
+
+impl Drop for RenderBackend {
+    fn drop(&mut self) {
+        let device = self.device.upgrade().unwrap();
+
+        unsafe {
+            device.destroy_semaphore(ManuallyDrop::take(
+                &mut self.rendering_complete_semaphore
+            ));
+
+            device.destroy_fence(ManuallyDrop::take(
+                &mut self.submission_complete_fence
+            ));
+        }
+    }
+}
+
+struct Resources {
+    device: Rc<gfx_backend::Device>,
+    instance: <gfx_backend::Backend as gfx_hal::Backend>::Instance,
+    surface: <gfx_backend::Backend as gfx_hal::Backend>::Surface,
+    render_passes: Vec<<gfx_backend::Backend as gfx_hal::Backend>::RenderPass>,
+    pipeline_layouts: Vec<<gfx_backend::Backend as gfx_hal::Backend>::PipelineLayout>,
+    pipelines: Vec<<gfx_backend::Backend as gfx_hal::Backend>::GraphicsPipeline>,
+    command_pool: <gfx_backend::Backend as gfx_hal::Backend>::CommandPool,
+}
+
+struct ResourceHolder {
+    resources: ManuallyDrop<Resources>,
+}
+
+impl ResourceHolder {
+    pub fn new(resources: Resources) -> Self {
+        Self {
+            resources: ManuallyDrop::new(resources),
+        }
+    }
+}
+
+impl Drop for ResourceHolder {
+    fn drop(&mut self) {
+        unsafe {
+            let Resources {
+                instance,
+                mut surface,
+                device,
+                render_passes,
+                pipeline_layouts,
+                pipelines,
+                command_pool,
+            } = ManuallyDrop::take(&mut self.resources);
+
+            for pipeline in pipelines {
+                device.destroy_graphics_pipeline(pipeline);
+            }
+
+            for pipeline_layout in pipeline_layouts {
+                device.destroy_pipeline_layout(pipeline_layout);
+            }
+
+            for render_pass in render_passes {
+                device.destroy_render_pass(render_pass);
+            }
+
+            device.destroy_command_pool(command_pool);
+            surface.unconfigure_swapchain(&device);
+            instance.destroy_surface(surface);
+        }
+    }
+}
