@@ -1,5 +1,5 @@
 use std::{
-   iter,
+    iter,
     rc::Rc, marker::PhantomData,
 };
 
@@ -21,9 +21,8 @@ use wgpu_hal::{
     ShaderModuleDescriptor,
     ShaderInput,
     PipelineLayoutDescriptor,
-    BindGroupLayoutFlags,
     PipelineLayoutFlags,
-    CommandEncoderDescriptor, CommandEncoder, Queue,
+    CommandEncoderDescriptor, CommandEncoder, Queue, SurfaceCapabilities,
 };
 
 use wgpu_types::{
@@ -40,28 +39,6 @@ use wgpu_types::{
     ColorWrites,
 };
 
-/*
-use gfx_hal::{
-    adapter::{Adapter, PhysicalDevice},
-    command::Level,
-    device::Device,
-    format::{ChannelType, Format},
-    image::Layout,
-    pass::{
-        Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, Subpass, SubpassDesc,
-    },
-    pool::{CommandPool, CommandPoolCreateFlags},
-    pso::{
-        BlendState, ColorBlendDesc, ColorMask, EntryPoint, Face, GraphicsPipelineDesc,
-        InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, Specialization,
-    },
-    queue::{QueueFamily, QueueGroup},
-    window::Surface,
-    Backend,
-    Instance,
-};
-*/
-
 use crate::{
     rendering::{
         backend::ExecutionContext,
@@ -76,21 +53,9 @@ use crate::{
     window::Window,
 };
 
-use super::{RenderBackendInitError, RenderBackend, RenderPresentationSurface};
+use super::{RenderBackendBuildError, RenderBackend, RenderPresentationSurface};
 
-pub type Result<T> = std::result::Result<T, RenderBackendInitError>;
-
-/*
-type HALCommandPool<B> = <B as Backend>::CommandPool;
-type HALCommandBuffer<B> = <B as Backend>::CommandBuffer;
-type HALDevice<B> = <B as Backend>::Device;
-type HALFence<B> = <B as Backend>::Fence;
-type HALInstance<B> = <B as Backend>::Instance;
-type HALPipelineLayout<B> = <B as Backend>::PipelineLayout;
-type HALRenderPass<B> = <B as Backend>::RenderPass;
-type HALSemaphore<B> = <B as Backend>::Semaphore;
-type HALSurface<B> = <B as Backend>::Surface;
-*/
+pub type Result<T> = std::result::Result<T, RenderBackendBuildError>;
 
 pub struct RenderBackendBuilder<'a, A: Api> {
     phantom: PhantomData<A>,
@@ -99,7 +64,7 @@ pub struct RenderBackendBuilder<'a, A: Api> {
 }
 
 impl<'a, A: Api> RenderBackendBuilder<'a, A> {
-    pub(super) fn new(window: &'a Window, surface_size: (u32, u32)) -> Self {
+    pub(crate) fn new(window: &'a Window, surface_size: (u32, u32)) -> Self {
         Self {
             phantom: Default::default(),
             window,
@@ -114,14 +79,10 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
         let instance = Self::create_instance(app_name)?;
         let mut surface = Self::create_surface(&instance, self.window)?;
         let (adapter, capabilities) = Self::find_adapter(&instance)?;
-
-        let surface_caps = unsafe {
-            adapter.surface_capabilities(&surface)
-        }.unwrap(); //.ok_or(HALInitError::SurfaceCapabilitiesFailed)?;
-
+        let surface_caps = Self::retrieve_surface_capabilities(&adapter, &surface)?;
         println!("Surface caps: {:#?}", surface_caps);
 
-        let OpenDevice { device, mut queue } = Self::create_logical_device(&adapter)?;
+        let OpenDevice { device, mut queue } = Self::open_logical_device(&adapter)?;
 
         let surface_config = SurfaceConfiguration {
             swap_chain_size: 3
@@ -138,9 +99,8 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             usage: TextureUses::COLOR_TARGET,
         };
 
-        unsafe {
-            surface.configure(&device, &surface_config)
-        }.unwrap(); //.map_err(HALInitError::SurfaceConfigureFailed)?;
+        unsafe { surface.configure(&device, &surface_config) }
+            .map_err(RenderBackendBuildError::SurfaceConfigureFailed)?;
 
         let pipeline_layout = Self::create_pipeline_layout(&device)?;
 
@@ -153,32 +113,9 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             &pipeline_layout,
             vertex_shader,
             fragment_shader,
-        );
+        )?;
 
-        let cmd_encoder_desc = CommandEncoderDescriptor {
-            label: None,
-            queue: &queue,
-        };
-
-        let mut cmd_encoder = unsafe { device.create_command_encoder(&cmd_encoder_desc) }.unwrap();
-
-        unsafe {
-            cmd_encoder.begin_encoding(Some("init"))
-        }.unwrap();
-
-        let init_fence_value = 1;
-        let fence = unsafe {
-            let mut fence = device.create_fence().unwrap();
-            let init_cmd = cmd_encoder.end_encoding().unwrap();
-
-            queue.submit(&[&init_cmd], Some((&mut fence, init_fence_value)))
-                 .unwrap();
-
-            device.wait(&fence, init_fence_value, !0).unwrap();
-            cmd_encoder.reset_all(iter::once(init_cmd));
-
-            fence
-        };
+        let execution_context = Self::create_execution_context(&device, &mut queue)?;
 
         let device = Rc::new(device);
         let weak_device = Rc::downgrade(&device);
@@ -189,14 +126,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             queue,
             pipeline_layout,
             pipeline,
-            ExecutionContext {
-                encoder: cmd_encoder,
-                fence,
-                fence_value: init_fence_value + 1,
-                used_views: Vec::new(),
-                used_cmd_bufs: Vec::new(),
-                frames_recorded: 0,
-            },
+            execution_context,
             RenderPresentationSurface::new(
                 weak_device,
                 adapter,
@@ -218,17 +148,13 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             },
         };
 
-        Ok(unsafe {
-            A::Instance::init(&instance_desc)
-        }.unwrap()) //.map_err(HALInitError::UnsupportedBackend)
+        unsafe { A::Instance::init(&instance_desc) }
+            .map_err(RenderBackendBuildError::InstanceFailed)
     }
 
-    fn create_surface(instance: &A::Instance, window: &Window)
-        -> Result<A::Surface>
-    {
-        Ok(unsafe {
-            instance.create_surface(&window.internal_window())
-        }.unwrap()) //.map_err(HALInitError::SurfaceCreationFailed)
+    fn create_surface(instance: &A::Instance, window: &Window) -> Result<A::Surface> {
+        unsafe { instance.create_surface(&window.internal_window()) }
+            .map_err(RenderBackendBuildError::SurfaceFailed)
     }
 
     fn find_adapter(instance: &A::Instance) -> Result<(A::Adapter, Capabilities)> {
@@ -236,8 +162,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             let mut adapters = instance.enumerate_adapters();
 
             if adapters.is_empty() {
-                //return Err(HALInitError::AdapterNotFound);
-                panic!("adapter not found");
+                return Err(RenderBackendBuildError::AdapterNotFound);
             }
 
             adapters.swap_remove(0)
@@ -246,71 +171,18 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
         Ok((exposed.adapter, exposed.capabilities))
     }
 
-    fn create_logical_device(adapter: &A::Adapter)
-        -> Result<OpenDevice<A>>
-    {
-        Ok(unsafe {
-            adapter.open(Features::empty(), &Limits::default())
-        }.unwrap()) //.map_err(HALInitError::LogicalDeviceCreationFailed)
+    fn retrieve_surface_capabilities(
+        adapter: &A::Adapter,
+        surface: &A::Surface,
+    ) -> Result<SurfaceCapabilities> {
+        unsafe { adapter.surface_capabilities(&surface) }
+            .ok_or(RenderBackendBuildError::PresentationNotSupported)
     }
 
-    /*
-    fn create_command_pool(device: &HALDevice<B>, queue_group: &QueueGroup<B>)
-        -> Result<(HALCommandPool<B>, HALCommandBuffer<B>)>
-    {
-        unsafe {
-            let mut command_pool = device
-                .create_command_pool(queue_group.family, CommandPoolCreateFlags::empty())
-                .map_err(HALInitError::DeviceOutOfMemory)?;
-
-            Ok((command_pool, command_pool.allocate_one(Level::Primary)))
-        }
+    fn open_logical_device(adapter: &A::Adapter) -> Result<OpenDevice<A>> {
+        unsafe { adapter.open(Features::empty(), &Limits::default()) }
+            .map_err(RenderBackendBuildError::LogicalDeviceOpenFailed)
     }
-
-    fn get_surface_color_format(surface: &HALSurface<B>, adapter: &Adapter<B>) -> Format {
-        match surface.supported_formats(&adapter.physical_device) {
-            Some(formats) => {
-                formats
-                    .into_iter()
-                    .find(|format| format.base_format().1 == ChannelType::Srgb)
-                    .unwrap_or_else(|| {
-                        // default format
-                        *formats.get(0).unwrap_or(&Format::Rgba8Srgb)
-                    })
-            },
-            None => Format::Rgba8Srgb,
-        }
-    }
-
-    fn create_render_pass(device: &HALDevice<B>, color_format: &Format)
-        -> Result<HALRenderPass<B>>
-    {
-        let color_attachment = Attachment {
-            format: Some(*color_format),
-            samples: 1,
-            ops: AttachmentOps::new(AttachmentLoadOp::Clear, AttachmentStoreOp::Store),
-            stencil_ops: AttachmentOps::DONT_CARE,
-            layouts: Layout::Undefined..Layout::Present,
-        };
-
-        let subpass = SubpassDesc {
-            colors: &[(0, Layout::ColorAttachmentOptimal)],
-            depth_stencil: None,
-            inputs: &[],
-            resolves: &[],
-            preserves: &[],
-        };
-
-        let render_pass = unsafe {
-            device.create_render_pass(
-                    iter::once(color_attachment), iter::once(subpass), iter::empty()
-                )
-                .map_err(HALInitError::DeviceOutOfMemory)
-        };
-
-        render_pass
-    }
-    */
 
     fn create_pipeline_layout(device: &A::Device) -> Result<A::PipelineLayout> {
         let pipeline_layout_desc = PipelineLayoutDescriptor {
@@ -320,11 +192,8 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             push_constant_ranges: &[],
         };
 
-        Ok(unsafe {
-            device.create_pipeline_layout(&pipeline_layout_desc)
-                .unwrap()
-                //.map_err(HALInitError::DeviceOutOfMemory)
-        })
+        unsafe { device.create_pipeline_layout(&pipeline_layout_desc) }
+            .map_err(RenderBackendBuildError::PipelineLayoutFailed)
     }
 
     fn create_pipeline(
@@ -333,8 +202,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
         pipeline_layout: &A::PipelineLayout,
         vertex_shader: &str,
         fragment_shader: &str,
-    ) -> A::RenderPipeline
-    {
+    ) -> Result<A::RenderPipeline> {
         let shader_builder = ShaderBuilder::default();
 
         let shader = shader_builder.build(
@@ -408,108 +276,51 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             multiview: None,
         };
 
-        unsafe {
-            device.create_render_pipeline(&pipeline_desc)
-        }.unwrap()
+        unsafe { device.create_render_pipeline(&pipeline_desc) }
+            .map_err(RenderBackendBuildError::PipelineFailed)
+    }
 
-
-
-
-        /*
-        let shader_builder = ShaderBuilder::default();
-
-        let shader = shader_builder.build(
-            ShaderFormat::GLSL,
-            vertex_shader,
-            fragment_shader,
-        );
-
-        let vertex_shader_module = match shader.vertex() {
-            Some(stage) => {
-                match stage.data() {
-                    ShaderData::SpirV(spirv) => Some(unsafe {
-                        device.create_shader_module(&spirv)
-                              .expect("Failed to create vertex shader module")
-                    }),
-                    #[cfg(feature = "shader-naga")]
-                    ShaderData::Naga(naga_shader) => {
-                        unimplemented!();
-                    },
-                    _ => panic!("Shader data format not supported."),
-                }
-            },
-            None => None,
-        }.unwrap();
-
-        let fragment_shader_module = match shader.fragment() {
-            Some(stage) => {
-                match stage.data() {
-                    ShaderData::SpirV(spirv) => Some(unsafe {
-                        device.create_shader_module(&spirv)
-                              .expect("Failed to create fragment shader module")
-                    }),
-                    #[cfg(feature = "shader-naga")]
-                    ShaderData::Naga(naga_shader) => {
-                        unimplemented!();
-                    },
-                    _ => panic!("Shader data format not supported."),
-                }
-            },
-            None => None,
-        }.unwrap();
-
-        let (vs_entry, fs_entry) = (
-            EntryPoint {
-                entry: "main",
-                module: &vertex_shader_module,
-                specialization: Specialization::EMPTY,
-            },
-            EntryPoint {
-                entry: "main",
-                module: &fragment_shader_module,
-                specialization: Specialization::EMPTY,
-            },
-        );
-
-        let primitive_assembler = PrimitiveAssemblerDesc::Vertex {
-            buffers: &[],
-            attributes: &[],
-            input_assembler: InputAssemblerDesc::new(Primitive::TriangleList),
-            vertex: vs_entry,
-            tessellation: None,
-            geometry: None,
+    fn create_execution_context(
+        device: &A::Device,
+        queue: &mut A::Queue,
+    ) -> Result<ExecutionContext<A>> {
+        let cmd_encoder_desc = CommandEncoderDescriptor {
+            label: None,
+            queue,
         };
 
-        let mut pipeline_desc = GraphicsPipelineDesc::new(
-            primitive_assembler,
-            Rasterizer {
-                cull_face: Face::NONE,
-                ..Rasterizer::FILL
-            },
-            Some(fs_entry),
-            pipeline_layout,
-            Subpass {
-                index: 0,
-                main_pass: render_pass,
-            },
-        );
+        let mut cmd_encoder = unsafe { device.create_command_encoder(&cmd_encoder_desc) }
+            .map_err(RenderBackendBuildError::CommandEncoderFailed)?;
 
-        pipeline_desc.blender.targets.push(ColorBlendDesc {
-            mask: ColorMask::ALL,
-            blend: Some(BlendState::ALPHA),
-        });
+        unsafe { cmd_encoder.begin_encoding(Some("init")) }
+            .map_err(RenderBackendBuildError::CommandEncoderFailed)?;
 
-        let pipeline = unsafe {
-            device.create_graphics_pipeline(&pipeline_desc, None)
-                  .expect("Failed to create graphics pipeline")
+        let init_fence_value = 1;
+        let fence = unsafe {
+            let mut fence = device.create_fence()
+                .map_err(RenderBackendBuildError::CommandEncoderFailed)?;
+
+            let init_cmd = cmd_encoder.end_encoding()
+                .map_err(RenderBackendBuildError::CommandEncoderFailed)?;
+
+            queue.submit(&[&init_cmd], Some((&mut fence, init_fence_value)))
+                .map_err(RenderBackendBuildError::CommandEncoderFailed)?;
+
+            device.wait(&fence, init_fence_value, !0)
+                .map_err(RenderBackendBuildError::CommandEncoderFailed)?;
+
+            cmd_encoder.reset_all(iter::once(init_cmd));
+
+            fence
         };
 
-        unsafe {
-            device.destroy_shader_module(vertex_shader_module);
-            device.destroy_shader_module(fragment_shader_module);
-        };
-
-        pipeline
-        */
+        Ok(ExecutionContext {
+            encoder: cmd_encoder,
+            fence,
+            fence_value: init_fence_value + 1,
+            used_views: Vec::new(),
+            used_cmd_bufs: Vec::new(),
+            frames_recorded: 0,
+        })
     }
 }

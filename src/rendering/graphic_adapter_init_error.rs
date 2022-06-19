@@ -3,14 +3,13 @@ use std::{
     fmt::{self, Debug, Display, Formatter},
 };
 
-use super::backend::GraphicBackendInitError;
+use super::backend::RenderBackendBuildError;
 
 #[derive(Debug)]
 pub enum GraphicAdapterInitError {
-    //BackendFailed(GraphicBackendInitError),
+    BackendFailed(RenderBackendBuildError),
 }
 
-/*
 impl Error for GraphicAdapterInitError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match &self {
@@ -22,8 +21,8 @@ impl Error for GraphicAdapterInitError {
 impl Display for GraphicAdapterInitError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self {
-            Self::BackendFailed(back_err) => write!(f, "Backend failed to initialize: {}", back_err),
+            Self::BackendFailed(back_err)
+                => write!(f, "Backend failed to initialize: {}", back_err),
         }
     }
 }
-*/

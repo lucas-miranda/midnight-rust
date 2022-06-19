@@ -1,11 +1,5 @@
-mod graphic_backend;
-pub use graphic_backend::GraphicBackend;
-
-mod graphic_backend_init_error;
-pub use graphic_backend_init_error::GraphicBackendInitError;
-
-mod render_backend_init_error;
-pub use render_backend_init_error::RenderBackendInitError;
+mod render_backend_build_error;
+pub use render_backend_build_error::RenderBackendBuildError;
 
 mod render_backend;
 pub use render_backend::{ExecutionContext, RenderBackend};
