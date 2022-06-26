@@ -19,3 +19,9 @@ pub use render_presentation_surface::RenderPresentationSurface;
 //#[cfg(feature = "vulkan-backend")]
 //use vulkan_backend as gfx_backend;
 
+#[repr(C)] //, align(256))]
+#[derive(Copy, Clone, Debug)]
+pub struct Vertex {
+    pub x: f32,
+    pub y: f32,
+}

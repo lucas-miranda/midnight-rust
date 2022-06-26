@@ -1,2 +1,4 @@
-mod vector2;
-pub use vector2::{Vector2, Vec2};
+mod geometry;
+pub use geometry::*;
+
+pub use num_traits;

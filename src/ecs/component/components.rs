@@ -34,21 +34,23 @@ impl Components {
     pub fn register<C>(&mut self, component: C) -> Option<Rc<C>> where
         C: Component + 'static
     {
+        /*
         println!(
             "registering component {} ({:?}) to entity {}",
             std::any::type_name::<C>(),
             std::any::TypeId::of::<C>(),
             self.entity_id,
         );
+        */
 
         match component.as_unique() {
             Some(_unique) => {
-                println!("as unique");
+                //println!("as unique");
                 self.unique_entries.insert(TypeId::of::<C>(), Rc::new(component))
                     .map(|a| a.downcast().unwrap())
             },
             None => {
-                println!("as regular");
+                //println!("as regular");
                 self.entries.push(Rc::new(component));
                 None
             },

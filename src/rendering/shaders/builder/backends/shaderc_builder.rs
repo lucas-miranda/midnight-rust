@@ -5,6 +5,7 @@ use crate::rendering::shaders::{
     },
     Shader,
     ShaderData,
+    ShaderId,
     ShaderStage,
 };
 
@@ -31,7 +32,7 @@ impl ShaderBuilderBackend for ShadercBuilderBackend {
 }
 
 impl ShaderGLSLBackendProcessor for ShadercBuilderBackend {
-    fn build(&self, vertex: &str, fragment: &str) -> Shader {
+    fn build(&self, id: ShaderId, vertex: &str, fragment: &str) -> Shader {
         let compiled_vertex = self.compiler
             .compile_into_spirv(
                 vertex,
@@ -53,8 +54,9 @@ impl ShaderGLSLBackendProcessor for ShadercBuilderBackend {
             .expect("Failed to compile fragment shader");
 
         Shader::new(
-            Some(ShaderStage::new(ShaderData::SpirV(compiled_vertex.as_binary().to_vec()))),
-            Some(ShaderStage::new(ShaderData::SpirV(compiled_fragment.as_binary().to_vec()))),
+            id,
+            ShaderStage::new(ShaderData::SpirV(compiled_vertex.as_binary().to_vec())),
+            ShaderStage::new(ShaderData::SpirV(compiled_fragment.as_binary().to_vec())),
         )
     }
 }

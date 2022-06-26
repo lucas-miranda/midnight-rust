@@ -1,7 +1,7 @@
 use std::{
     borrow::Borrow,
     iter,
-    mem::ManuallyDrop,
+    mem::{self, ManuallyDrop},
     rc::Rc,
 };
 
@@ -19,6 +19,13 @@ use wgpu_hal::{
     BufferBarrier,
     SurfaceError,
     DeviceError,
+    BindGroupLayoutDescriptor,
+    BindGroupLayoutFlags,
+    BufferBinding, BufferDescriptor,
+    auxil, Capabilities,
+    BufferUses, MemoryFlags,
+    ShaderModuleDescriptor,
+    ShaderInput,
 };
 
 use wgpu_types::{
@@ -26,6 +33,21 @@ use wgpu_types::{
     TextureViewDimension,
     Extent3d,
     Color,
+    BindGroupLayoutEntry,
+    ShaderStages,
+    BindingType,
+    BufferBindingType,
+    BufferSize,
+    BufferAddress,
+};
+
+use crate::{
+    rendering::shaders::{
+        builder::{ShaderBuilder, ShaderContext},
+        Shader,
+        ShaderData,
+    },
+    math::{num_traits::Num, Vec2},
 };
 
 /*
@@ -47,6 +69,7 @@ use gfx_hal::{
 use super::{
     RenderBackendOperationError,
     RenderPresentationSurface,
+    Vertex,
 };
 
 const RENDER_TIMEOUT_NS: u64 = 1_000_000_000;
@@ -60,6 +83,7 @@ pub struct ExecutionContext<A: Api> {
     pub fence_value: FenceValue,
     pub used_views: Vec<A::TextureView>,
     pub used_cmd_bufs: Vec<A::CommandBuffer>,
+    pub used_additional_buffers: Vec<A::Buffer>,
     pub frames_recorded: usize,
 }
 
@@ -70,6 +94,10 @@ impl<A: Api> ExecutionContext<A> {
 
         for view in self.used_views.drain(..) {
             device.destroy_texture_view(view);
+        }
+
+        for buffer in self.used_additional_buffers.drain(..) {
+            device.destroy_buffer(buffer);
         }
 
         self.frames_recorded = 0;
@@ -85,33 +113,43 @@ pub struct RenderContext<A: Api> {
 pub struct RenderBackend<A: Api> {
     instance: A::Instance,
     device: Rc<A::Device>,
+    capabilities: Capabilities,
     queue: A::Queue,
-    pipeline_layout: A::PipelineLayout,
-    pipeline: A::RenderPipeline,
+    //pipeline_layout: A::PipelineLayout,
+    //pipeline: A::RenderPipeline,
     contexts: Vec<ExecutionContext<A>>,
     context_index: usize,
     presentation_surface: RenderPresentationSurface<A>,
+    shader_builder: ShaderBuilder<A>,
 }
 
 impl<A: Api> RenderBackend<A> {
     pub(super) fn new(
         instance: A::Instance,
         device: Rc<A::Device>,
+        capabilities: Capabilities,
         queue: A::Queue,
-        pipeline_layout: A::PipelineLayout,
-        pipeline: A::RenderPipeline,
+        //pipeline_layout: A::PipelineLayout,
+        //pipeline: A::RenderPipeline,
         execution_context: ExecutionContext<A>,
         presentation_surface: RenderPresentationSurface<A>,
     ) -> Self {
+        let shader_builder = ShaderBuilder::new(
+            Rc::downgrade(&device),
+            *presentation_surface.surface_format(),
+        );
+
         Self {
             instance,
             device,
+            capabilities,
             queue,
-            pipeline_layout,
-            pipeline,
+            //pipeline_layout,
+            //pipeline,
             contexts: vec![execution_context],
             context_index: 0,
             presentation_surface,
+            shader_builder,
         }
     }
 
@@ -123,6 +161,83 @@ impl<A: Api> RenderBackend<A> {
         &mut self.presentation_surface
     }
 
+    pub fn shader_builder(&mut self) -> &mut ShaderBuilder<A> {
+        &mut self.shader_builder
+    }
+
+    pub fn draw_vertices<T: Num>(
+        &mut self,
+        vertices: &[Vec2<T>],
+        shader: &Shader,
+    ) -> Result<()> {
+        //
+
+        let local_alignment = auxil::align_to(
+            //mem::size_of::<Vertex>() as u32,
+            mem::size_of::<Vec2<T>>() as u32,
+            self.capabilities.limits.min_uniform_buffer_offset_alignment,
+        );
+
+        println!("local_alignment: {}", local_alignment);
+
+        let vertex_buffer_desc = BufferDescriptor {
+            label: Some("vertex"),
+            size: (vertices.len() as BufferAddress) * (local_alignment as BufferAddress),
+            usage: BufferUses::VERTEX | BufferUses::MAP_WRITE,
+            memory_flags: MemoryFlags::PREFER_COHERENT,
+        };
+
+        let vertex_buffer = unsafe { self.device.create_buffer(&vertex_buffer_desc) }
+            .unwrap();
+
+        let vertex_buffer_binding = BufferBinding {
+            buffer: &vertex_buffer,
+            offset: 0,
+            //size: BufferSize::new(mem::size_of::<Vertex>() as _),
+            size: BufferSize::new(mem::size_of::<Vec2<T>>() as _),
+        };
+
+        let size = vertices.len() * local_alignment as usize;
+        unsafe {
+            match self.device.map_buffer(&vertex_buffer, 0..size as BufferAddress) {
+                Ok(mapping) => {
+                    std::ptr::copy_nonoverlapping(vertices.as_ptr() as *const u8, mapping.ptr.as_ptr(), size);
+                    assert!(mapping.is_coherent);
+                    self.device.unmap_buffer(&vertex_buffer).unwrap();
+                },
+                Err(e) => match e {
+                    DeviceError::Lost => println!("Device lost."),
+                    _ => panic!("{}", e),
+                },
+            }
+        }
+
+        //
+
+        let render_context = self.prepare_render()?;
+
+        // draw
+        {
+            let context = &mut self.contexts[self.context_index];
+            let shader_context = self.shader_builder
+                .get_context(&shader.id())
+                .unwrap();
+
+            unsafe {
+                context.encoder.set_render_pipeline(&shader_context.pipeline);
+                context.encoder.set_vertex_buffer(0, vertex_buffer_binding);
+                context.encoder.draw(0, vertices.len() as u32, 0, 1);
+            }
+
+            context.used_additional_buffers.push(vertex_buffer);
+        }
+
+        self.submit(render_context)?;
+
+        Ok(())
+    }
+
+    /*
     pub fn render(&mut self) -> Result<()> {
         let render_context = self.prepare_render()?;
 
@@ -131,10 +246,6 @@ impl<A: Api> RenderBackend<A> {
             let context = &mut self.contexts[self.context_index];
 
             unsafe {
-                /*
-                context.encoder
-                    .set_bind_group(&self.pipeline_layout, 0, &self.global_group, &[]);
-                */
                 context.encoder.draw(0, 3, 0, 1);
             }
         }
@@ -142,6 +253,7 @@ impl<A: Api> RenderBackend<A> {
         self.submit(render_context)?;
         Ok(())
     }
+    */
 
     fn prepare_render(&mut self) -> Result<RenderContext<A>> {
         // reconfigure if needed
@@ -206,7 +318,7 @@ impl<A: Api> RenderBackend<A> {
 
         unsafe {
             context.encoder.begin_render_pass(&pass_desc);
-            context.encoder.set_render_pipeline(&self.pipeline);
+            //context.encoder.set_render_pipeline(&self.pipeline);
         }
 
         Ok(RenderContext {
@@ -286,6 +398,7 @@ impl<A: Api> RenderBackend<A> {
                         fence_value: 0,
                         used_views: Vec::new(),
                         used_cmd_bufs: Vec::new(),
+                        used_additional_buffers: Vec::new(),
                         frames_recorded: 0,
                     }
                 });

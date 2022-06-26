@@ -8,12 +8,7 @@ pub struct Application {
 
 impl Application {
     pub fn run<L: 'static + ApplicationLoop>(&mut self) -> Result<(), ApplicationError> {
-        /*
-        for domain in &mut self.domains {
-            domain.setup();
-        }
-        */
-
+        Self::display_header();
         let mut loop_control = L::new(WindowContext::new());
 
         for domain in self.domains.drain(..) {
@@ -28,5 +23,13 @@ impl Application {
     pub fn with_domain<D: 'static + Domain>(mut self, domain: D) -> Self {
         self.domains.push(Box::new(domain));
         self
+    }
+
+    fn display_header() {
+        println!(" ┌───────────┐");
+        println!(" │  {}  │", env!("CARGO_PKG_NAME"));
+        println!(" │   v{}  │", env!("CARGO_PKG_VERSION"));
+        println!(" └───────────┘");
+        println!();
     }
 }

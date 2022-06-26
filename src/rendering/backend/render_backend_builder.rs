@@ -1,6 +1,7 @@
 use std::{
     iter,
     rc::Rc, marker::PhantomData,
+    mem,
 };
 
 use wgpu_hal::{
@@ -22,7 +23,7 @@ use wgpu_hal::{
     ShaderInput,
     PipelineLayoutDescriptor,
     PipelineLayoutFlags,
-    CommandEncoderDescriptor, CommandEncoder, Queue, SurfaceCapabilities,
+    CommandEncoderDescriptor, CommandEncoder, Queue, SurfaceCapabilities, VertexBufferLayout,
 };
 
 use wgpu_types::{
@@ -36,7 +37,7 @@ use wgpu_types::{
     MultisampleState,
     ColorTargetState,
     BlendState,
-    ColorWrites,
+    ColorWrites, VertexAttribute,
 };
 
 use crate::{
@@ -50,7 +51,7 @@ use crate::{
             ShaderData,
         },
     },
-    window::Window,
+    window::Window, math::Vec2,
 };
 
 use super::{RenderBackendBuildError, RenderBackend, RenderPresentationSurface};
@@ -74,7 +75,6 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
 
     pub fn build(self) -> Result<RenderBackend<A>> {
         let app_name = "app name";
-        let app_version = 1;
 
         let instance = Self::create_instance(app_name)?;
         let mut surface = Self::create_surface(&instance, self.window)?;
@@ -102,6 +102,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
         unsafe { surface.configure(&device, &surface_config) }
             .map_err(RenderBackendBuildError::SurfaceConfigureFailed)?;
 
+        /*
         let pipeline_layout = Self::create_pipeline_layout(&device)?;
 
         let vertex_shader = include_str!("shaders/p1.vert");
@@ -114,6 +115,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             vertex_shader,
             fragment_shader,
         )?;
+        */
 
         let execution_context = Self::create_execution_context(&device, &mut queue)?;
 
@@ -123,9 +125,10 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
         Ok(RenderBackend::new(
             instance,
             device,
+            capabilities,
             queue,
-            pipeline_layout,
-            pipeline,
+            //pipeline_layout,
+            //pipeline,
             execution_context,
             RenderPresentationSurface::new(
                 weak_device,
@@ -184,6 +187,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             .map_err(RenderBackendBuildError::LogicalDeviceOpenFailed)
     }
 
+    /*
     fn create_pipeline_layout(device: &A::Device) -> Result<A::PipelineLayout> {
         let pipeline_layout_desc = PipelineLayoutDescriptor {
             label: None,
@@ -195,7 +199,9 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
         unsafe { device.create_pipeline_layout(&pipeline_layout_desc) }
             .map_err(RenderBackendBuildError::PipelineLayoutFailed)
     }
+    */
 
+    /*
     fn create_pipeline(
         device: &A::Device,
         format: &TextureFormat,
@@ -250,6 +256,19 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             None => None,
         }.unwrap();
 
+        let vertex_buffer_layout = VertexBufferLayout {
+            //array_stride: mem::size_of::<super::Vertex>() as _,
+            array_stride: mem::size_of::<Vec2<f32>>() as _,
+            step_mode: wgpu_types::VertexStepMode::Vertex,
+            attributes: &[
+                VertexAttribute {
+                    format: wgpu_types::VertexFormat::Float32x2,
+                    offset: 0,
+                    shader_location: 0,
+                }
+            ],
+        };
+
         let pipeline_desc = RenderPipelineDescriptor {
             label: None,
             layout: pipeline_layout,
@@ -257,7 +276,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
                 module: &vertex_shader_module,
                 entry_point: "main",
             },
-            vertex_buffers: &[],
+            vertex_buffers: &[vertex_buffer_layout],
             fragment_stage: Some(ProgrammableStage {
                 module: &fragment_shader_module,
                 entry_point: "main",
@@ -279,6 +298,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
         unsafe { device.create_render_pipeline(&pipeline_desc) }
             .map_err(RenderBackendBuildError::PipelineFailed)
     }
+    */
 
     fn create_execution_context(
         device: &A::Device,
@@ -320,6 +340,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             fence_value: init_fence_value + 1,
             used_views: Vec::new(),
             used_cmd_bufs: Vec::new(),
+            used_additional_buffers: Vec::new(),
             frames_recorded: 0,
         })
     }

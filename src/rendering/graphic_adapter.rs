@@ -1,15 +1,22 @@
-use crate::window::Window;
+use num_traits::Num;
+use crate::{
+    math::Vec2,
+    rendering::shaders::Shader,
+    window::Window,
+};
 
 use super::{
+    ActiveApi,
     GraphicAdapterInitError,
     backend::{
         RenderBackend,
         RenderBackendBuilder,
+        Vertex,
     },
+    shaders::builder::ShaderBuilder,
 };
 
 pub type Result<T> = std::result::Result<T, super::GraphicAdapterInitError>;
-type ActiveApi = wgpu_hal::api::Vulkan;
 
 pub struct GraphicAdapter {
     backend: RenderBackend<ActiveApi>,
@@ -36,9 +43,19 @@ impl GraphicAdapter {
             .request_reconfigure_swapchain_with(width, height);
     }
 
+    pub fn shader_builder(&mut self) -> &mut ShaderBuilder<ActiveApi> {
+        self.backend.shader_builder()
+    }
+
+    pub fn draw_vertices<T: Num>(&mut self, vertices: &[Vec2<T>], shader: &Shader) {
+        self.backend.draw_vertices(vertices, shader).unwrap();
+    }
+
+    /*
     pub fn render(&mut self) {
         self.backend
             .render()
             .unwrap()
     }
+    */
 }
