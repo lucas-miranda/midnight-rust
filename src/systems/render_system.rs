@@ -7,9 +7,15 @@ use crate::{
         System,
     },
     rendering::{
-        shaders::{builder::ShaderFormat, Shader},
+        shaders::{
+            builder::ShaderFormat,
+            AttributeFormat,
+            Shader,
+            VertexAttribute,
+        },
         GraphicAdapter,
     },
+    vertex_attrs,
 };
 
 pub struct RenderSystem {
@@ -22,11 +28,15 @@ impl RenderSystem {
         let shader = graphic_adapter
             .borrow_mut()
             .shader_builder()
-            .build(
+            .create(
                 ShaderFormat::GLSL,
                 include_str!("shaders/p1.vert"),
                 include_str!("shaders/p1.frag"),
-            );
+            )
+            .set_vertex_attributes(vertex_attrs![
+                Float32x2,
+            ].into_iter())
+            .build();
 
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),

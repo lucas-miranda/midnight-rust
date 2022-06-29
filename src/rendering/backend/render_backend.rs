@@ -170,15 +170,11 @@ impl<A: Api> RenderBackend<A> {
         vertices: &[Vec2<T>],
         shader: &Shader,
     ) -> Result<()> {
-        //
-
         let local_alignment = auxil::align_to(
             //mem::size_of::<Vertex>() as u32,
             mem::size_of::<Vec2<T>>() as u32,
             self.capabilities.limits.min_uniform_buffer_offset_alignment,
         );
-
-        println!("local_alignment: {}", local_alignment);
 
         let vertex_buffer_desc = BufferDescriptor {
             label: Some("vertex"),
