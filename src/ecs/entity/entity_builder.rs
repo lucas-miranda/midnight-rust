@@ -1,7 +1,12 @@
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
+
 use super::{Entity, Entities};
 
 pub struct EntityBuilder<'a> {
-    entity: Entity,
+    entity: Rc<RefCell<Entity>>,
     entities: &'a mut Entities,
 }
 
@@ -10,9 +15,9 @@ impl<'a> EntityBuilder<'a> {
         self.entities.register(self.entity)
     }
 
-    pub(super) fn new(mut entity: Entity, entities: &'a mut Entities) -> Self {
+    pub(super) fn new(entity: Rc<RefCell<Entity>>, entities: &'a mut Entities) -> Self {
         match &mut entities.setup_entity {
-            Some(ref mut setup_entity) => setup_entity(&mut entity),
+            Some(ref mut setup_entity) => setup_entity(entity.borrow_mut()),
             None => ()
         }
 
@@ -24,7 +29,7 @@ impl<'a> EntityBuilder<'a> {
 }
 
 impl<'a> std::ops::Deref for EntityBuilder<'a> {
-    type Target = Entity;
+    type Target = Rc<RefCell<Entity>>;
 
     fn deref(&self) -> &Self::Target {
         &self.entity

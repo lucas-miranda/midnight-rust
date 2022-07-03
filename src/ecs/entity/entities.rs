@@ -1,10 +1,14 @@
-use std::collections::hash_map::HashMap;
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    collections::hash_map::HashMap,
+    rc::Rc,
+};
 use super::{Entity, EntityBuilder, EntityId, EntitiesIter};
 
 pub struct Entities {
-    entries: HashMap<EntityId, Entity>,
+    entries: HashMap<EntityId, Rc<RefCell<Entity>>>,
     next_id: EntityId,
-    pub(super) setup_entity: Option<Box<dyn FnMut(&mut Entity)>>,
+    pub(super) setup_entity: Option<Box<dyn FnMut(RefMut<Entity>)>>,
 }
 
 impl Entities {
@@ -16,7 +20,7 @@ impl Entities {
         }
     }
 
-    pub fn with_setup<F: 'static + FnMut(&mut Entity)>(mut self, setup_entity: F) -> Self {
+    pub fn with_setup<F: 'static + FnMut(RefMut<Entity>)>(mut self, setup_entity: F) -> Self {
         self.setup_entity = Some(Box::new(setup_entity));
         self
     }
@@ -26,12 +30,16 @@ impl Entities {
         EntityBuilder::new(Entity::new(id), self)
     }
 
-    pub fn get(&self, id: EntityId) -> Option<&Entity> {
-        self.entries.get(&id)
+    pub fn get(&self, id: EntityId) -> Option<Ref<Entity>> {
+        self.entries
+            .get(&id)
+            .map(|e| e.borrow())
     }
 
-    pub fn get_mut(&mut self, id: EntityId) -> Option<&mut Entity> {
-        self.entries.get_mut(&id)
+    pub fn get_mut(&mut self, id: EntityId) -> Option<RefMut<Entity>> {
+        self.entries
+            .get_mut(&id)
+            .map(|e| e.borrow_mut())
     }
 
     pub fn count(&self) -> usize {
@@ -42,8 +50,19 @@ impl Entities {
         self.entries.values().into()
     }
 
-    pub(super) fn register(&mut self, entity: Entity) {
-        let id = entity.id();
+    /*
+    pub fn iter<'a, F>(&'a self) -> EntitiesIter<'a, F> where
+        F: FnMut(Rc<RefCell<Entity>>) -> Ref<'a, Entity>
+    {
+        self.entries
+            .values()
+            .map(|e| e.borrow())
+            .into()
+    }
+    */
+
+    pub(super) fn register(&mut self, entity: Rc<RefCell<Entity>>) {
+        let id = entity.borrow().id();
 
         assert!(
             self.entries.insert(id, entity).is_none(),

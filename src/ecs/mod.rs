@@ -36,7 +36,7 @@ impl SystemInterface {
                 for entity in entities {
                     //let e: &Entity = entity;
                     //println!("[{}]", entity.id());
-                    container.register_components(entity.components());
+                    container.register_components(entity.borrow().components());
                     /*
                     entity.components()
                         .iter()

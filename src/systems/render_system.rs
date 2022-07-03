@@ -56,11 +56,19 @@ impl System for RenderSystem {
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
         for component_ref in container.iter() {
-            if let Some(ref displayer) = *component_ref.as_deref() {
-                if let Some(ref g) = displayer.graphic {
+            if let Ok(displayer) = component_ref.retrieve() {
+                if let Some(ref g) = displayer.borrow().get_ref().graphic {
                     g.draw(graphic_adapter.borrow_mut(), &self.shader);
                 }
             }
+
+            /*
+            if let Some(ref displayer) = *component_ref.as_deref() {
+                if let Some(ref g) = displayer.borrow().graphic {
+                    g.draw(graphic_adapter.borrow_mut(), &self.shader);
+                }
+            }
+            */
         }
     }
 

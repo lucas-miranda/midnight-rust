@@ -1,5 +1,4 @@
-mod transform;
-pub use transform::Transform;
+pub mod transform;
 
 mod graphic_displayer;
 pub use graphic_displayer::GraphicDisplayer;

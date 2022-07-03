@@ -7,8 +7,15 @@ pub use entities_iter::EntitiesIter;
 mod entity_builder;
 pub use entity_builder::EntityBuilder;
 
-use crate::ecs::component::{Component, Components};
-use std::rc::Rc;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
+
+use crate::ecs::component::{
+    AnyComponent,
+    Components
+};
 
 pub type EntityId = u32;
 
@@ -22,26 +29,32 @@ impl Entity {
         self.id
     }
 
-    pub fn create_component<C>(&mut self)  -> Option<Rc<C>> where
-        C: Component + Default + 'static
+    /*
+    pub fn create_component<C>(&mut self)  -> Option<C> where
+        C: AnyComponent + Default + 'static
     {
         self.register_component(C::default())
     }
+    */
 
-    pub fn register_component<C>(&mut self, component: C) -> Option<Rc<C>> where
-        C: Component + 'static
+    pub fn register_component<C>(&mut self, component: C) -> Option<C> where
+        C: AnyComponent + 'static
     {
-        self.components.register(component)
+        self.components.internal_register(component, self.id())
     }
 
     pub fn components(&self) -> &Components {
         &self.components
     }
 
-    pub(super) fn new(id: EntityId) -> Self {
-        Self {
-            id,
-            components: Components::new(id),
-        }
+    pub(super) fn new(id: EntityId) -> Rc<RefCell<Self>> {
+        Rc::new_cyclic(|e| {
+            let components = Components::new(e.clone());
+
+            RefCell::new(Self {
+                id,
+                components,
+            })
+        })
     }
 }
