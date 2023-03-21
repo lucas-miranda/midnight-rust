@@ -6,11 +6,11 @@ use wgpu_hal::{
     Surface,
     SurfaceCapabilities,
     SurfaceConfiguration,
-    CompositeAlphaMode,
     TextureUses,
 };
 
 use wgpu_types::{
+    CompositeAlphaMode,
     TextureFormat,
     PresentMode,
     Extent3d,
@@ -145,6 +145,7 @@ impl<A: Api> RenderPresentationSurface<A> {
                 depth_or_array_layers: 1,
             },
             usage: TextureUses::COLOR_TARGET,
+            view_formats: Vec::default(),
         };
 
         unsafe {

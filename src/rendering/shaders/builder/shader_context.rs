@@ -91,11 +91,11 @@ impl<A: Api> ShaderContext<A> {
             },
             depth_stencil: None,
             multisample: wgpu_types::MultisampleState::default(),
-            color_targets: &[wgpu_types::ColorTargetState {
+            color_targets: &[Some(wgpu_types::ColorTargetState {
                 format: texture_format,
                 blend: Some(wgpu_types::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu_types::ColorWrites::default(),
-            }],
+            })],
             multiview: None,
         };
 

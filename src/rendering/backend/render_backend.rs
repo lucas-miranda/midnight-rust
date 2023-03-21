@@ -294,7 +294,7 @@ impl<A: Api> RenderBackend<A> {
                 depth_or_array_layers: 1,
             },
             sample_count: 1,
-            color_attachments: &[ColorAttachment {
+            color_attachments: &[Some(ColorAttachment {
                 target: Attachment {
                     view: &surface_texture_view,
                     usage: TextureUses::COLOR_TARGET,
@@ -307,7 +307,7 @@ impl<A: Api> RenderBackend<A> {
                     b: 0.3,
                     a: 1.0,
                 }
-            }],
+            })],
             depth_stencil_attachment: None,
             multiview: None,
         };

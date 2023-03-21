@@ -4,6 +4,8 @@ use std::{
     mem,
 };
 
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+
 use wgpu_hal::{
     Adapter,
     Api,
@@ -13,7 +15,6 @@ use wgpu_hal::{
     Instance,
     OpenDevice,
     SurfaceConfiguration,
-    CompositeAlphaMode,
     TextureUses,
     Surface,
     Device,
@@ -27,6 +28,7 @@ use wgpu_hal::{
 };
 
 use wgpu_types::{
+    CompositeAlphaMode,
     Features,
     Limits,
     PresentMode,
@@ -97,6 +99,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
                 depth_or_array_layers: 1,
             },
             usage: TextureUses::COLOR_TARGET,
+            view_formats: Vec::default(),
         };
 
         unsafe { surface.configure(&device, &surface_config) }
@@ -149,6 +152,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
             } else {
                 InstanceFlags::empty()
             },
+            dx12_shader_compiler: wgpu_types::Dx12Compiler::Fxc,
         };
 
         unsafe { A::Instance::init(&instance_desc) }
@@ -156,7 +160,7 @@ impl<'a, A: Api> RenderBackendBuilder<'a, A> {
     }
 
     fn create_surface(instance: &A::Instance, window: &Window) -> Result<A::Surface> {
-        unsafe { instance.create_surface(&window.internal_window()) }
+        unsafe { instance.create_surface(window.internal_window().raw_display_handle(), window.internal_window().raw_window_handle()) }
             .map_err(RenderBackendBuildError::SurfaceFailed)
     }
 
