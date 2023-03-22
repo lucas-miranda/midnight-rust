@@ -1,4 +1,7 @@
-use super::component::ComponentHandlerContainer;
+mod system_interface;
+pub use system_interface::SystemInterface;
+
+use crate::ecs::component::ComponentHandlerContainer;
 
 pub trait System {
     type Container: ComponentHandlerContainer + 'static;

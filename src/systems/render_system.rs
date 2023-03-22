@@ -4,7 +4,7 @@ use crate::{
     components::GraphicDisplayer,
     ecs::{
         component::ComponentContainer,
-        System,
+        system::System,
     },
     rendering::{
         shaders::{

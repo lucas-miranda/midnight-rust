@@ -1,11 +1,10 @@
 use std::{
     any::Any,
     cell::RefCell,
-    ops::{Deref, DerefMut},
     rc::Rc,
 };
 
-use crate::ecs::EntityId;
+use crate::ecs::entity::EntityId;
 use super::{
     AnyComponent,
     Component,
@@ -13,7 +12,6 @@ use super::{
     ComponentAnyRef,
 };
 
-//pub type RawComponentEntry = Rc<(dyn Any + 'static)>;
 pub type RawComponentEntry = Rc<RefCell<(dyn AnyComponent + 'static)>>;
 
 /// Describes a component entry at Components
@@ -65,20 +63,3 @@ impl ComponentEntry {
         self.component.borrow().as_any().is::<C>()
     }
 }
-
-
-/*
-impl Deref for ComponentEntry {
-    type Target = RawComponentEntry;
-
-    fn deref(&self) -> &Self::Target {
-        &self.component
-    }
-}
-
-impl DerefMut for ComponentEntry {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.component
-    }
-}
-*/

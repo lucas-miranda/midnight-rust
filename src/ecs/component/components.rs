@@ -8,8 +8,9 @@ use std::{
 use crate::ecs::entity::{Entity, EntityId};
 use super::{
     AnyComponent,
-    ComponentRef,
+    ComponentAttribute,
     ComponentEntry,
+    ComponentRef,
 };
 
 // TODO  make it a strong type around Rc<_>,
@@ -37,7 +38,7 @@ impl Components {
         self.entries.len()
     }
 
-    pub fn register<C>(&mut self, mut component: C) -> Option<C> where
+    pub fn register<C>(&mut self, component: C) -> Option<C> where
         C: AnyComponent + 'static
     {
         let entity_id = self.entity
@@ -91,21 +92,23 @@ impl Components {
     {
         component.registered(self);
 
-        match component.as_unique() {
-            Some(_unique) => {
-                // as unique
-                self.unique_entries.insert(
-                        TypeId::of::<C>(),
-                        ComponentEntry::new(entity_id, component)
-                    );
-                    //.map(|a| a.leak::<C>())
-                None
-            },
-            None => {
-                // as regular
-                self.entries.push(ComponentEntry::new(entity_id, component));
-                None
-            },
-        }
+        //for attr in component.attributes() {
+            match component.attributes() {
+                ComponentAttribute::Unique => {
+                    // as unique
+                    self.unique_entries.insert(
+                            TypeId::of::<C>(),
+                            ComponentEntry::new(entity_id, component)
+                        );
+                },
+                ComponentAttribute::None => {
+                    // as regular
+                    self.entries.push(ComponentEntry::new(entity_id, component));
+                },
+                _ => unimplemented!(),
+            }
+        //}
+
+        None
     }
 }
