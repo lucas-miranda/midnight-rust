@@ -26,10 +26,16 @@ impl Application {
     }
 
     fn display_header() {
-        println!(" ┌───────────┐");
-        println!(" │  {}  │", env!("CARGO_PKG_NAME"));
-        println!(" │   v{}  │", env!("CARGO_PKG_VERSION"));
-        println!(" └───────────┘");
+        let cargo_pkg_name = env!("CARGO_PKG_NAME");
+        let cargo_pkg_version = env!("CARGO_PKG_VERSION");
+
+        let border_len = cargo_pkg_name.len().max(cargo_pkg_version.len());
+        let border = "─".repeat(border_len);
+
+        println!(" ┌──{}──┐", border);
+        println!(" │  {}  │", cargo_pkg_name);
+        println!(" │  {}v{}   │", " ".repeat(border_len - cargo_pkg_version.len() - 2), cargo_pkg_version);
+        println!(" └──{}──┘", border);
         println!();
     }
 }
