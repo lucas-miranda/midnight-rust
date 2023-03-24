@@ -3,9 +3,10 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::ecs::component::{
+    AnyComponent,
+    AnyComponentQuery,
     Components,
     ComponentAnyRef,
-    AnyComponent,
 };
 
 use super::ComponentHandlerContainer;
@@ -29,7 +30,9 @@ impl ComponentFnContainer {
 }
 
 impl ComponentHandlerContainer for ComponentFnContainer {
-    fn register_components(&mut self, components: &Components) {
+    type Query = AnyComponentQuery;
+
+    fn capture_components(&mut self, components: &Components) {
         for entry in components.iter() {
             let reference = entry.get_any_ref();
 
@@ -49,6 +52,10 @@ impl ComponentHandlerContainer for ComponentFnContainer {
                 Err(_) => (),
             }
         }
+    }
+
+    fn query(self) -> Self::Query {
+        AnyComponentQuery::new(self.container)
     }
 }
 

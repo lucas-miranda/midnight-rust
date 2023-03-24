@@ -11,4 +11,4 @@ mod value_mut_ref;
 pub use value_mut_ref::ComponentValueMutRef;
 
 mod any_ref;
-pub use any_ref::ComponentAnyRef;
+pub use any_ref::{ComponentAnyRef, ComponentStrongAnyRef};

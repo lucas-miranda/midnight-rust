@@ -4,7 +4,13 @@ use std::{
 };
 
 use crate::ecs::{
-    component::{AnyComponent, ComponentFnContainer},
+    component::{
+        AnyComponent,
+        ComponentFnContainer,
+        ComponentHandlerContainer,
+        ComponentQuery,
+        EmptyComponent,
+    },
     system::System,
 };
 
@@ -20,30 +26,29 @@ impl UpdateSystem {
 }
 
 impl System for UpdateSystem {
+    type Component = EmptyComponent;
     type Container = ComponentFnContainer;
 
     fn setup(&mut self) {
     }
 
-    fn run(&mut self, container: &mut Self::Container) {
-        println!("[UpdateSystem] {} captured components", container.count());
+    fn run(&mut self, query: <Self::Container as ComponentHandlerContainer>::Query) {
+        println!("[UpdateSystem] {} captured components", query.count());
 
-        for component_ref in container.iter() {
-            if let Ok(strong_ref) = component_ref.retrieve() {
-                let mut component = strong_ref.borrow_mut();
+        for component_ref in query.iter() {
+            let mut component = component_ref.borrow_mut();
 
-                //let updateStep: Option<&dyn UpdateStep> = component.as_any().downcast_ref();
-
+            //let updateStep: Option<&dyn UpdateStep> = component.as_any().downcast_ref();
 
 
-                //component.run();
 
-                /*
-                component.as_updatable_mut()
-                    .unwrap()
-                    .update();
-                */
-            }
+            //component.run();
+
+            /*
+            component.as_updatable_mut()
+                .unwrap()
+                .update();
+            */
         }
     }
 

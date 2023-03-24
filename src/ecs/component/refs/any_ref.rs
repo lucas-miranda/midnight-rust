@@ -8,6 +8,8 @@ use crate::ecs::{
     entity::EntityId,
 };
 
+pub type ComponentStrongAnyRef = Rc<RefCell<dyn AnyComponent>>;
+
 pub struct ComponentAnyRef {
     entity_id: EntityId,
     weak: Weak<RefCell<(dyn AnyComponent + 'static)>>,
@@ -24,7 +26,7 @@ impl ComponentAnyRef {
         }
     }
 
-    pub fn retrieve(&self) -> Result<Rc<RefCell<dyn AnyComponent>>, &'static str> {
+    pub fn retrieve(&self) -> Result<ComponentStrongAnyRef, &'static str> {
         match self.weak.upgrade() {
             Some(strong) => Ok(strong),
             None => Err("Can't upgrade from weak ref"),

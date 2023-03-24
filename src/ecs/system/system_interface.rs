@@ -1,7 +1,7 @@
 use std::any::Any;
 use crate::ecs::{
     component::ComponentHandlerContainer,
-    entity::{EntityId, EntitiesIter},
+    entity::EntitiesIter,
 };
 
 use super::System;
@@ -29,7 +29,7 @@ impl SystemInterface {
                 for entity in entities {
                     //let e: &Entity = entity;
                     //println!("[{}]", entity.id());
-                    container.register_components(entity.borrow().components());
+                    container.capture_components(entity.borrow().components());
                     /*
                     entity.components()
                         .iter()
@@ -41,7 +41,9 @@ impl SystemInterface {
 
                 // TODO  register entities' components into container
 
-                sys.run(&mut container);
+                //sys.run(&mut container);
+
+                sys.run(container.query());
 
                 /*
                 if !container.is::<C>() {

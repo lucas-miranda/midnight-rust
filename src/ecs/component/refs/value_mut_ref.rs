@@ -1,6 +1,7 @@
 use std::{
     cell::RefMut,
     marker::PhantomData,
+    ops::{Deref, DerefMut},
 };
 
 use crate::ecs::component::{
@@ -20,12 +21,18 @@ impl<'a, C: 'static + Component> ComponentValueMutRef<'a, C> {
             phantom: PhantomData::default(),
         }
     }
+}
 
-    pub fn get_ref(&self) -> &C {
+impl<'a, C: 'static + Component> Deref for ComponentValueMutRef<'a, C> {
+    type Target = C;
+
+    fn deref(&self) -> &Self::Target {
         self.value.as_any().downcast_ref().unwrap()
     }
+}
 
-    pub fn get_mut_ref(&mut self) -> &mut C {
+impl<'a, C: 'static + Component> DerefMut for ComponentValueMutRef<'a, C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         self.value.as_any_mut().downcast_mut().unwrap()
     }
 }

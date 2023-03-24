@@ -10,6 +10,9 @@ pub use components::Components;
 mod containers;
 pub use containers::*;
 
+mod queries;
+pub use queries::*;
+
 mod refs;
 pub use refs::*;
 
@@ -26,7 +29,7 @@ bitflags! {
 }
 
 /// A component which can be registered to an entity.
-pub trait Component {
+pub trait Component : 'static {
     fn attributes(&self) -> ComponentAttribute;
 
     /// Registered to an Entity.

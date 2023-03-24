@@ -38,6 +38,13 @@ impl<C: 'static + Component> ComponentRef<C> {
         }
     }
 
+    pub fn consume<'a>(self) -> Result<ComponentStrongRef<'a, C>, &'static str> {
+        match self.weak.upgrade() {
+            Some(strong) => Ok(ComponentStrongRef::new(strong)),
+            None => Err("Can't upgrade from weak ref"),
+        }
+    }
+
     pub fn entity_id(&self) -> EntityId {
         self.entity_id
     }

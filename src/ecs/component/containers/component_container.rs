@@ -1,24 +1,26 @@
 use std::ops::Deref;
 
 use crate::ecs::component::{
+    AnyComponent,
     Components,
     ComponentRef,
-    ComponentStrongRef,
-    AnyComponent,
+    ExplicitComponentQuery,
 };
 
 use super::ComponentHandlerContainer;
 
 #[derive(Default)]
-pub struct ComponentContainer<C: AnyComponent> {
+pub struct ComponentContainer<'a, C: 'static + AnyComponent> {
     container: Vec<ComponentRef<C>>,
+    phantom: std::marker::PhantomData<&'a ()>
 }
 
-impl<C: 'static + AnyComponent> ComponentContainer<C> {
+impl<'a, C: 'static + AnyComponent> ComponentContainer<'a, C> {
+    /*
     /// Retrieve first component found
-    pub fn component<'a>(&'a self) -> Result<ComponentStrongRef<C>, &'static str> {
+    pub fn component<'a>(&'a self) -> Result<&ComponentStrongRef<C>, &'static str> {
         if let Some(element) = self.container.first() {
-            return element.retrieve()
+            return Ok(element)
         }
 
         Err("Not found")
@@ -32,6 +34,7 @@ impl<C: 'static + AnyComponent> ComponentContainer<C> {
 
         None
     }
+    */
 
     pub fn register(&mut self, component: ComponentRef<C>) {
         self.container.push(component);
@@ -40,23 +43,28 @@ impl<C: 'static + AnyComponent> ComponentContainer<C> {
     pub fn count(&self) -> usize {
         self.container.len()
     }
-
-    /*
-    pub fn iter(&self) {
-        self.iter()
-    }
-    */
 }
 
-impl<C: 'static + AnyComponent> ComponentHandlerContainer for ComponentContainer<C> {
-    fn register_components(&mut self, components: &Components) {
+impl<'a, C: 'static + AnyComponent> ComponentHandlerContainer for ComponentContainer<'a, C> {
+    type Query = ExplicitComponentQuery<'a, C>;
+
+    fn capture_components(&mut self, components: &Components) {
         for component in components.iter_kind::<C>() {
             self.container.push(component)
         }
     }
+
+    fn query(self) -> Self::Query {
+        ExplicitComponentQuery::new(
+            self.container
+                .into_iter()
+                .map(|a| a.consume().unwrap())
+                .collect()
+        )
+    }
 }
 
-impl<C: AnyComponent> Deref for ComponentContainer<C> {
+impl<'a, C: AnyComponent> Deref for ComponentContainer<'a, C> {
     type Target = [ComponentRef<C>];
 
     fn deref(&self) -> &Self::Target {

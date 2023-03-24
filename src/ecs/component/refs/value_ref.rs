@@ -1,6 +1,7 @@
 use std::{
     cell::Ref,
     marker::PhantomData,
+    ops::Deref,
 };
 
 use crate::ecs::component::{
@@ -20,8 +21,12 @@ impl<'a, C: 'static + Component> ComponentValueRef<'a, C> {
             phantom: PhantomData::default(),
         }
     }
+}
 
-    pub fn get_ref(&self) -> &C {
+impl<'a, C: 'static + Component> Deref for ComponentValueRef<'a, C> {
+    type Target = C;
+
+    fn deref(&self) -> &Self::Target {
         self.value.as_any().downcast_ref().unwrap()
     }
 }

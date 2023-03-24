@@ -1,9 +1,16 @@
-use std::{rc::{Rc, Weak}, cell::RefCell};
+use std::{
+    rc::{Rc, Weak},
+    cell::RefCell
+};
 
 use crate::{
     components::GraphicDisplayer,
     ecs::{
-        component::ComponentContainer,
+        component::{
+            ComponentContainer,
+            ComponentHandlerContainer,
+            ComponentQuery,
+        },
         system::System,
     },
     rendering::{
@@ -18,12 +25,13 @@ use crate::{
     vertex_attrs,
 };
 
-pub struct RenderSystem {
+pub struct RenderSystem<'a> {
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
     shader: Shader,
+    phantom: std::marker::PhantomData<&'a ()>,
 }
 
-impl RenderSystem {
+impl<'a> RenderSystem<'a> {
     pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
         let shader = graphic_adapter
             .borrow_mut()
@@ -41,26 +49,36 @@ impl RenderSystem {
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),
             shader,
+            phantom: Default::default(),
         }
     }
 }
 
-impl System for RenderSystem {
-    type Container = ComponentContainer<GraphicDisplayer>;
+impl<'a> System for RenderSystem<'a> {
+    type Component = GraphicDisplayer;
+    type Container = ComponentContainer<'a, GraphicDisplayer>;
 
     fn setup(&mut self) {
     }
 
-    fn run(&mut self, container: &mut Self::Container) {
-        println!("[RenderSystem] {} captured components", container.count());
+    fn run(&mut self, query: <Self::Container as ComponentHandlerContainer>::Query) {
+        println!("[RenderSystem] {} captured components", query.count());
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
-        for component_ref in container.iter() {
+        for component_ref in query.iter() {
+            if let Some(ref g) = (*component_ref.borrow_value()).graphic {
+                g.draw(graphic_adapter.borrow_mut(), &self.shader);
+            }
+
+            /*
             if let Ok(displayer) = component_ref.retrieve() {
-                if let Some(ref g) = displayer.borrow().get_ref().graphic {
+                if let Some(ref g) = (*displayer.borrow_value()).graphic {
                     g.draw(graphic_adapter.borrow_mut(), &self.shader);
                 }
             }
+            */
+
+            //
 
             /*
             if let Some(ref displayer) = *component_ref.as_deref() {
