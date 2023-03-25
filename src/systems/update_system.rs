@@ -1,6 +1,6 @@
 use crate::ecs::{
     component::{
-        ComponentFnContainer,
+        self,
         ComponentStrongAnyRef,
     },
     system::System,
@@ -19,18 +19,18 @@ impl UpdateSystem {
 }
 
 impl System for UpdateSystem {
-    type Container = ComponentFnContainer;
+    type Query = component::FnQuery;
 
     fn setup(&mut self) {
     }
 
-    fn input(&mut self, _container: Self::Container, _event: &input::DeviceEvent) {
+    fn input(&mut self, _query: Self::Query, _event: &input::DeviceEvent) {
     }
 
-    fn run(&mut self, container: Self::Container) {
+    fn run(&mut self, query: Self::Query) {
         //println!("[UpdateSystem] {} captured components", query.count());
 
-        for component_ref in container.iter() {
+        for component_ref in query.iter() {
             let mut component = component_ref.borrow_mut();
 
             //let updateStep: Option<&dyn UpdateStep> = component.as_any().downcast_ref();
@@ -47,8 +47,7 @@ impl System for UpdateSystem {
         }
     }
 
-    fn create_container(&self) -> Self::Container {
-        Self::Container::new(Self::component_filter)
-        //Self::Container::default()
+    fn create_query(&self) -> Self::Query {
+        Self::Query::new(Self::component_filter)
     }
 }

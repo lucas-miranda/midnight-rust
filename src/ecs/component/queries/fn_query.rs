@@ -6,14 +6,14 @@ use crate::ecs::component::{
     ComponentStrongAnyRef,
 };
 
-use super::ComponentHandlerContainer;
+use super::ComponentQuery;
 
-pub struct ComponentFnContainer {
+pub struct FnQuery {
     container: Vec<ComponentStrongAnyRef>,
     filter: Box<dyn Fn(&ComponentStrongAnyRef) -> bool>,
 }
 
-impl ComponentFnContainer {
+impl FnQuery {
     pub fn new<F: 'static + Fn(&ComponentStrongAnyRef) -> bool>(filter: F) -> Self {
         Self {
             container: Vec::new(),
@@ -26,8 +26,8 @@ impl ComponentFnContainer {
     }
 }
 
-impl ComponentHandlerContainer for ComponentFnContainer {
-    type ComponentQuery = Box<dyn AnyComponent>;
+impl ComponentQuery for FnQuery {
+    type Target = Box<dyn AnyComponent>;
 
     fn capture_components(&mut self, components: &Components) {
         for entry in components.iter() {
@@ -45,7 +45,7 @@ impl ComponentHandlerContainer for ComponentFnContainer {
     }
 }
 
-impl Deref for ComponentFnContainer {
+impl Deref for FnQuery {
     type Target = [ComponentStrongAnyRef];
 
     fn deref(&self) -> &Self::Target {

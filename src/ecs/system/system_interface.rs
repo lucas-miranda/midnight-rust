@@ -1,6 +1,6 @@
 use std::any::Any;
 use crate::ecs::{
-    component::ComponentHandlerContainer,
+    component::ComponentQuery,
     entity::EntitiesIter,
 };
 use crate::input;
@@ -15,7 +15,7 @@ pub struct SystemInterface {
 }
 
 impl SystemInterface {
-    pub fn wrap<C: ComponentHandlerContainer + 'static, S: System<Container = C> + 'static>(system: S) -> Self {
+    pub fn wrap<Q: ComponentQuery + 'static, S: System<Query = Q> + 'static>(system: S) -> Self {
         SystemInterface {
             system: Box::new(system),
             setup_fn: Box::new(|boxed_system| {
@@ -25,23 +25,23 @@ impl SystemInterface {
             input_fn: Box::new(|boxed_system, entities, event| {
                 let sys = boxed_system.downcast_mut::<S>().unwrap();
 
-                let mut container = sys.create_container();
+                let mut query = sys.create_query();
 
                 for entity in entities {
-                    container.capture_components(entity.borrow().components());
+                    query.capture_components(entity.borrow().components());
                 }
 
-                sys.input(container, event)
+                sys.input(query, event)
             }),
             run_fn: Box::new(|boxed_system, entities| {
                 let sys = boxed_system.downcast_mut::<S>().unwrap();
-                let mut container = sys.create_container();
+                let mut query = sys.create_query();
 
                 for entity in entities {
-                    container.capture_components(entity.borrow().components());
+                    query.capture_components(entity.borrow().components());
                 }
 
-                sys.run(container);
+                sys.run(query);
             }),
         }
     }

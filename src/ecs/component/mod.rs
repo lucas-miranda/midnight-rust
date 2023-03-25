@@ -7,8 +7,8 @@ pub use component_entry::{ComponentEntry, RawComponentEntry};
 mod components;
 pub use components::Components;
 
-mod containers;
-pub use containers::*;
+mod queries;
+pub use queries::*;
 
 mod refs;
 pub use refs::*;

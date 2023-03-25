@@ -1,13 +1,13 @@
 mod system_interface;
 pub use system_interface::SystemInterface;
 
-use crate::ecs::component::ComponentHandlerContainer;
+use crate::ecs::component::ComponentQuery;
 
 pub trait System {
-    type Container: ComponentHandlerContainer;
+    type Query: ComponentQuery;
 
     fn setup(&mut self);
-    fn input(&mut self, container: Self::Container, event: &winit::event::DeviceEvent);
-    fn run(&mut self, container: Self::Container);
-    fn create_container(&self) -> Self::Container;
+    fn input(&mut self, query: Self::Query, event: &winit::event::DeviceEvent);
+    fn run(&mut self, query: Self::Query);
+    fn create_query(&self) -> Self::Query;
 }

@@ -5,14 +5,14 @@ use crate::ecs::component::{
     ComponentStrongRef,
 };
 
-use super::ComponentHandlerContainer;
+use super::ComponentQuery;
 
 //#[derive(Default)]
-pub struct ComponentContainer<'a, C: 'static + AnyComponent> {
+pub struct Query<'a, C: 'static + AnyComponent> {
     container: Vec<ComponentStrongRef<'a, C>>,
 }
 
-impl<'a, C: 'static + AnyComponent> Default for ComponentContainer<'a, C> {
+impl<'a, C: 'static + AnyComponent> Default for Query<'a, C> {
     fn default() -> Self {
         Self {
             container: Vec::default(),
@@ -20,7 +20,7 @@ impl<'a, C: 'static + AnyComponent> Default for ComponentContainer<'a, C> {
     }
 }
 
-impl<'a, C: 'static + AnyComponent> ComponentContainer<'a, C> {
+impl<'a, C: 'static + AnyComponent> Query<'a, C> {
     /// Retrieve first component found
     pub fn component(&self) -> Result<&ComponentStrongRef<C>, &'static str> {
         if let Some(element) = self.container.first() {
@@ -35,8 +35,8 @@ impl<'a, C: 'static + AnyComponent> ComponentContainer<'a, C> {
     }
 }
 
-impl<'a, C: 'static + AnyComponent> ComponentHandlerContainer for ComponentContainer<'a, C> {
-    type ComponentQuery = C;
+impl<'a, C: 'static + AnyComponent> ComponentQuery for Query<'a, C> {
+    type Target = C;
 
     fn capture_components(&mut self, components: &Components) {
         for component in components.iter_kind::<C>() {
@@ -45,7 +45,7 @@ impl<'a, C: 'static + AnyComponent> ComponentHandlerContainer for ComponentConta
     }
 }
 
-impl<'a, C: AnyComponent> Deref for ComponentContainer<'a, C> {
+impl<'a, C: AnyComponent> Deref for Query<'a, C> {
     type Target = [ComponentStrongRef<'a, C>];
 
     fn deref(&self) -> &Self::Target {
