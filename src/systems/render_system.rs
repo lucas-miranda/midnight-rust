@@ -6,13 +6,10 @@ use std::{
 use crate::{
     components::GraphicDisplayer,
     ecs::{
-        component::{
-            ComponentContainer,
-            ComponentHandlerContainer,
-            ComponentQuery,
-        },
+        component::ComponentContainer,
         system::System,
     },
+    input,
     rendering::{
         shaders::{
             builder::ShaderFormat,
@@ -55,17 +52,19 @@ impl<'a> RenderSystem<'a> {
 }
 
 impl<'a> System for RenderSystem<'a> {
-    type Component = GraphicDisplayer;
     type Container = ComponentContainer<'a, GraphicDisplayer>;
 
     fn setup(&mut self) {
     }
 
-    fn run(&mut self, query: <Self::Container as ComponentHandlerContainer>::Query) {
-        println!("[RenderSystem] {} captured components", query.count());
+    fn input(&mut self, container: Self::Container, event: &input::DeviceEvent) {
+    }
+
+    fn run(&mut self, container: Self::Container) {
+        println!("[RenderSystem] {} captured components", container.count());
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
-        for component_ref in query.iter() {
+        for component_ref in container.iter() {
             if let Some(ref g) = (*component_ref.borrow_value()).graphic {
                 g.draw(graphic_adapter.borrow_mut(), &self.shader);
             }

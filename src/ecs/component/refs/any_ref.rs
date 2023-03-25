@@ -32,4 +32,11 @@ impl ComponentAnyRef {
             None => Err("Can't upgrade from weak ref"),
         }
     }
+
+    pub fn consume<'a>(self) -> Result<ComponentStrongAnyRef, &'static str> {
+        match self.weak.upgrade() {
+            Some(strong) => Ok(strong),
+            None => Err("Can't upgrade from weak ref"),
+        }
+    }
 }

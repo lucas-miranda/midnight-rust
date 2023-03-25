@@ -1,23 +1,20 @@
-use std::cell::RefCell;
 use std::ops::Deref;
-use std::rc::Rc;
 
 use crate::ecs::component::{
     AnyComponent,
-    AnyComponentQuery,
     Components,
-    ComponentAnyRef,
+    ComponentStrongAnyRef,
 };
 
 use super::ComponentHandlerContainer;
 
 pub struct ComponentFnContainer {
-    container: Vec<ComponentAnyRef>,
-    filter: Box<dyn Fn(Rc<RefCell<dyn AnyComponent>>) -> bool>,
+    container: Vec<ComponentStrongAnyRef>,
+    filter: Box<dyn Fn(&ComponentStrongAnyRef) -> bool>,
 }
 
 impl ComponentFnContainer {
-    pub fn new<F: 'static + Fn(Rc<RefCell<dyn AnyComponent>>) -> bool>(filter: F) -> Self {
+    pub fn new<F: 'static + Fn(&ComponentStrongAnyRef) -> bool>(filter: F) -> Self {
         Self {
             container: Vec::new(),
             filter: Box::new(filter),
@@ -30,37 +27,26 @@ impl ComponentFnContainer {
 }
 
 impl ComponentHandlerContainer for ComponentFnContainer {
-    type Query = AnyComponentQuery;
+    type ComponentQuery = Box<dyn AnyComponent>;
 
     fn capture_components(&mut self, components: &Components) {
         for entry in components.iter() {
             let reference = entry.get_any_ref();
 
-            match reference.retrieve() {
+            match reference.consume() {
                 Ok(strong_ref) => {
-                    if (self.filter)(strong_ref) {
-                        self.container.push(reference);
+                    if (self.filter)(&strong_ref) {
+                        self.container.push(strong_ref);
                     }
-
-                    /*
-                    // register only updatable components
-                    if strong_ref.as_updatable().is_some() {
-                        self.container.push(reference);
-                    }
-                    */
                 },
                 Err(_) => (),
             }
         }
     }
-
-    fn query(self) -> Self::Query {
-        AnyComponentQuery::new(self.container)
-    }
 }
 
 impl Deref for ComponentFnContainer {
-    type Target = [ComponentAnyRef];
+    type Target = [ComponentStrongAnyRef];
 
     fn deref(&self) -> &Self::Target {
         &self.container

@@ -1,43 +1,33 @@
 use std::ops::Deref;
-
 use crate::ecs::component::{
     AnyComponent,
     Components,
-    ComponentRef,
-    ExplicitComponentQuery,
+    ComponentStrongRef,
 };
 
 use super::ComponentHandlerContainer;
 
-#[derive(Default)]
+//#[derive(Default)]
 pub struct ComponentContainer<'a, C: 'static + AnyComponent> {
-    container: Vec<ComponentRef<C>>,
-    phantom: std::marker::PhantomData<&'a ()>
+    container: Vec<ComponentStrongRef<'a, C>>,
+}
+
+impl<'a, C: 'static + AnyComponent> Default for ComponentContainer<'a, C> {
+    fn default() -> Self {
+        Self {
+            container: Vec::default(),
+        }
+    }
 }
 
 impl<'a, C: 'static + AnyComponent> ComponentContainer<'a, C> {
-    /*
     /// Retrieve first component found
-    pub fn component<'a>(&'a self) -> Result<&ComponentStrongRef<C>, &'static str> {
+    pub fn component(&self) -> Result<&ComponentStrongRef<C>, &'static str> {
         if let Some(element) = self.container.first() {
             return Ok(element)
         }
 
         Err("Not found")
-    }
-
-    /// Retrieve a `ComponentRef` to the first component found
-    pub fn component_ref(&self) -> Option<&ComponentRef<C>> {
-        if let Some(element) = self.container.first() {
-            return Some(&element);
-        }
-
-        None
-    }
-    */
-
-    pub fn register(&mut self, component: ComponentRef<C>) {
-        self.container.push(component);
     }
 
     pub fn count(&self) -> usize {
@@ -46,26 +36,17 @@ impl<'a, C: 'static + AnyComponent> ComponentContainer<'a, C> {
 }
 
 impl<'a, C: 'static + AnyComponent> ComponentHandlerContainer for ComponentContainer<'a, C> {
-    type Query = ExplicitComponentQuery<'a, C>;
+    type ComponentQuery = C;
 
     fn capture_components(&mut self, components: &Components) {
         for component in components.iter_kind::<C>() {
-            self.container.push(component)
+            self.container.push(component.consume().unwrap())
         }
-    }
-
-    fn query(self) -> Self::Query {
-        ExplicitComponentQuery::new(
-            self.container
-                .into_iter()
-                .map(|a| a.consume().unwrap())
-                .collect()
-        )
     }
 }
 
 impl<'a, C: AnyComponent> Deref for ComponentContainer<'a, C> {
-    type Target = [ComponentRef<C>];
+    type Target = [ComponentStrongRef<'a, C>];
 
     fn deref(&self) -> &Self::Target {
         &self.container

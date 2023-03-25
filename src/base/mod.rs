@@ -104,6 +104,11 @@ impl ApplicationLoop for ContinuousLoop {
                     println!("Window resized to {:?}", dims);
                     state.graphic_adapter.borrow_mut().request_resize_surface(dims.width, dims.height);
                 }
+                winit::event::Event::DeviceEvent { event, .. } => {
+                    for domain in &mut self.domains {
+                        domain.input(&event);
+                    }
+                }
                 winit::event::Event::MainEventsCleared => {
                     let delta_time = state.time.delta(&mut last_instant);
 

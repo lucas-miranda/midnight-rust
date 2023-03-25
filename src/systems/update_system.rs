@@ -1,41 +1,36 @@
-use std::{
-    cell::RefCell,
-    rc::Rc,
-};
-
 use crate::ecs::{
     component::{
-        AnyComponent,
         ComponentFnContainer,
-        ComponentHandlerContainer,
-        ComponentQuery,
-        EmptyComponent,
+        ComponentStrongAnyRef,
     },
     system::System,
 };
+use crate::input;
 
 #[derive(Default)]
 pub struct UpdateSystem {
 }
 
 impl UpdateSystem {
-    fn component_filter(_component: Rc<RefCell<dyn AnyComponent>>) -> bool {
+    fn component_filter(_component: &ComponentStrongAnyRef) -> bool {
         //component.borrow().as_updatable().is_some()
         true
     }
 }
 
 impl System for UpdateSystem {
-    type Component = EmptyComponent;
     type Container = ComponentFnContainer;
 
     fn setup(&mut self) {
     }
 
-    fn run(&mut self, query: <Self::Container as ComponentHandlerContainer>::Query) {
-        println!("[UpdateSystem] {} captured components", query.count());
+    fn input(&mut self, _container: Self::Container, _event: &input::DeviceEvent) {
+    }
 
-        for component_ref in query.iter() {
+    fn run(&mut self, container: Self::Container) {
+        //println!("[UpdateSystem] {} captured components", query.count());
+
+        for component_ref in container.iter() {
             let mut component = component_ref.borrow_mut();
 
             //let updateStep: Option<&dyn UpdateStep> = component.as_any().downcast_ref();
