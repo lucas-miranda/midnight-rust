@@ -23,6 +23,12 @@ impl<'a, C: 'static + Component> ComponentValueRef<'a, C> {
     }
 }
 
+impl<'a, C: 'static + Component> AsRef<C> for ComponentValueRef<'a, C> {
+    fn as_ref(&self) -> &C {
+        self.value.as_any().downcast_ref().unwrap()
+    }
+}
+
 impl<'a, C: 'static + Component> Deref for ComponentValueRef<'a, C> {
     type Target = C;
 

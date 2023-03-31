@@ -24,11 +24,11 @@ impl<'a, C: 'static + Component> ComponentStrongRef<'a, C> {
         }
     }
 
-    pub fn borrow_value(&self) -> ComponentValueRef<C> {
+    pub fn borrow(&self) -> ComponentValueRef<C> {
         ComponentValueRef::new(self.strong.borrow())
     }
 
-    pub fn borrow_mut_value(&self) -> ComponentValueMutRef<C> {
+    pub fn borrow_mut(&self) -> ComponentValueMutRef<C> {
         ComponentValueMutRef::new(self.strong.borrow_mut())
     }
 }

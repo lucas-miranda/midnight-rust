@@ -1,8 +1,12 @@
-use std::ops::Deref;
+use std::{
+    cell,
+    ops::Deref,
+};
 
 use crate::ecs::component::{
     AnyComponent,
     Components,
+    ComponentQueryIterator,
     ComponentStrongAnyRef,
 };
 
@@ -27,7 +31,7 @@ impl FnQuery {
 }
 
 impl ComponentQuery for FnQuery {
-    type Target = Box<dyn AnyComponent>;
+    type Target<'t> = cell::Ref<'t, dyn AnyComponent> where Self : 't;
 
     fn capture_components(&mut self, components: &Components) {
         for entry in components.iter() {
@@ -42,6 +46,18 @@ impl ComponentQuery for FnQuery {
                 Err(_) => (),
             }
         }
+    }
+
+    fn iter_components<'i>(&'i self) -> ComponentQueryIterator<'i, Self::Target<'i>> {
+        fn convert(c: &ComponentStrongAnyRef) -> cell::Ref<'_, dyn AnyComponent> {
+            c.borrow()
+        }
+
+        ComponentQueryIterator::new(
+            self.container
+                .iter()
+                .map(convert)
+        )
     }
 }
 

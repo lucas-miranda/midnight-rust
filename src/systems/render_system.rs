@@ -6,7 +6,7 @@ use std::{
 use crate::{
     components::GraphicDisplayer,
     ecs::{
-        component,
+        component::{self, ComponentQuery},
         system::System,
     },
     input,
@@ -22,13 +22,12 @@ use crate::{
     vertex_attrs,
 };
 
-pub struct RenderSystem<'a> {
+pub struct RenderSystem {
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
     shader: Shader,
-    phantom: std::marker::PhantomData<&'a ()>,
 }
 
-impl<'a> RenderSystem<'a> {
+impl RenderSystem {
     pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
         let shader = graphic_adapter
             .borrow_mut()
@@ -46,50 +45,31 @@ impl<'a> RenderSystem<'a> {
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),
             shader,
-            phantom: Default::default(),
         }
     }
 }
 
-impl<'a> System for RenderSystem<'a> {
-    type Query = component::Query<'a, GraphicDisplayer>;
+impl System for RenderSystem {
+    type Query<'q> = component::Query<'q, GraphicDisplayer>;
 
     fn setup(&mut self) {
     }
 
-    fn input(&mut self, _query: Self::Query, _event: &input::DeviceEvent) {
+    fn input<'q>(&mut self, _query: Self::Query<'q>, _event: &input::DeviceEvent) {
     }
 
-    fn run(&mut self, query: Self::Query) {
+    fn run<'q>(&mut self, query: Self::Query<'q>) {
         println!("[RenderSystem] {} captured components", query.count());
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
-        for component_ref in query.iter() {
-            if let Some(ref g) = (*component_ref.borrow_value()).graphic {
+        for component_ref in query.iter_components() {
+            if let Some(ref g) = component_ref.graphic {
                 g.draw(graphic_adapter.borrow_mut(), &self.shader);
             }
-
-            /*
-            if let Ok(displayer) = component_ref.retrieve() {
-                if let Some(ref g) = (*displayer.borrow_value()).graphic {
-                    g.draw(graphic_adapter.borrow_mut(), &self.shader);
-                }
-            }
-            */
-
-            //
-
-            /*
-            if let Some(ref displayer) = *component_ref.as_deref() {
-                if let Some(ref g) = displayer.borrow().graphic {
-                    g.draw(graphic_adapter.borrow_mut(), &self.shader);
-                }
-            }
-            */
         }
     }
 
-    fn create_query(&self) -> Self::Query {
+    fn create_query<'q>(&self) -> Self::Query<'q> {
         Self::Query::default()
     }
 }
