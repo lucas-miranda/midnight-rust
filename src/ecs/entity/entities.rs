@@ -8,7 +8,7 @@ use super::{Entity, EntityBuilder, EntityId, EntitiesIter};
 pub struct Entities {
     entries: HashMap<EntityId, Rc<RefCell<Entity>>>,
     next_id: EntityId,
-    pub(super) setup_entity: Option<Box<dyn FnMut(RefMut<Entity>)>>,
+    pub(super) setup_entity: Option<Box<dyn FnMut(&mut Entity)>>,
 }
 
 impl Entities {
@@ -20,7 +20,7 @@ impl Entities {
         }
     }
 
-    pub fn with_setup<F: 'static + FnMut(RefMut<Entity>)>(mut self, setup_entity: F) -> Self {
+    pub fn with_setup<F: 'static + FnMut(&mut Entity)>(mut self, setup_entity: F) -> Self {
         self.setup_entity = Some(Box::new(setup_entity));
         self
     }
@@ -61,11 +61,13 @@ impl Entities {
     }
     */
 
-    pub(super) fn register(&mut self, entity: Rc<RefCell<Entity>>) {
-        let id = entity.borrow().id();
+    pub(super) fn register(&mut self, entity: Entity) {
+        let id = entity.id();
 
         assert!(
-            self.entries.insert(id, entity).is_none(),
+            self.entries
+                .insert(id, Rc::new(RefCell::new(entity)))
+                .is_none(),
             "Something very wrong happened when registering an entity with id {}.",
             id,
         );

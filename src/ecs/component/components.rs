@@ -1,11 +1,9 @@
 use std::{
     any::TypeId,
-    cell::RefCell,
     collections::HashMap,
-    rc::Weak,
 };
 
-use crate::ecs::entity::{Entity, EntityId};
+use crate::ecs::entity::EntityId;
 use super::{
     AnyComponent,
     ComponentAttribute,
@@ -20,15 +18,15 @@ use super::{
 
 pub struct Components {
     //entity_id: EntityId,
-    entity: Weak<RefCell<Entity>>,
+    entity_id: EntityId,
     entries: Vec<ComponentEntry>,
     unique_entries: HashMap<TypeId, ComponentEntry>
 }
 
 impl Components {
-    pub(crate) fn new(entity: Weak<RefCell<Entity>>) -> Self {
+    pub(crate) fn new(entity_id: EntityId) -> Self {
         Self {
-            entity,
+            entity_id,
             entries: Vec::new(),
             unique_entries: HashMap::new(),
         }
@@ -41,13 +39,7 @@ impl Components {
     pub fn register<C>(&mut self, component: C) -> Option<C> where
         C: AnyComponent + 'static
     {
-        let entity_id = self.entity
-            .upgrade()
-            .unwrap()
-            .borrow()
-            .id();
-
-        self.internal_register(component, entity_id)
+        self.internal_register(component, self.entity_id)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &ComponentEntry> {

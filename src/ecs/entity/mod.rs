@@ -25,6 +25,13 @@ pub struct Entity {
 }
 
 impl Entity {
+    pub(super) fn new(id: EntityId) -> Self {
+        Self {
+            id,
+            components: Components::new(id),
+        }
+    }
+
     pub fn id(&self) -> EntityId {
         self.id
     }
@@ -45,16 +52,5 @@ impl Entity {
 
     pub fn components(&self) -> &Components {
         &self.components
-    }
-
-    pub(super) fn new(id: EntityId) -> Rc<RefCell<Self>> {
-        Rc::new_cyclic(|e| {
-            let components = Components::new(e.clone());
-
-            RefCell::new(Self {
-                id,
-                components,
-            })
-        })
     }
 }
