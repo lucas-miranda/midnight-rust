@@ -29,12 +29,14 @@ impl Application {
         let cargo_pkg_name = env!("CARGO_PKG_NAME");
         let cargo_pkg_version = env!("CARGO_PKG_VERSION");
 
-        let border_len = cargo_pkg_name.len().max(cargo_pkg_version.len());
+        let border_len = cargo_pkg_name.len().max(cargo_pkg_version.len() + 2);
         let border = "─".repeat(border_len);
+        let pkg_name_fill = " ".repeat(border_len - cargo_pkg_name.len());
+        let pkg_version_fill = " ".repeat(border_len - (cargo_pkg_version.len() + 1));
 
         println!(" ┌──{}──┐", border);
-        println!(" │  {}  │", cargo_pkg_name);
-        println!(" │  {}v{}   │", " ".repeat(border_len - cargo_pkg_version.len() - 2), cargo_pkg_version);
+        println!(" │  {}{}  │", cargo_pkg_name, pkg_name_fill);
+        println!(" │  {}v{}  │", pkg_version_fill, cargo_pkg_version);
         println!(" └──{}──┘", border);
         println!();
     }
