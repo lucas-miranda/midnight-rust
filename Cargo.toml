@@ -1,10 +1,10 @@
 [package]
-name = "thunder-raccoon"
+name = "raven"
 version = "0.1.0"
 edition = "2021"
 
 #[workspace]
-#members = ["thunder-raccoon-proc"]
+#members = ["raven-proc"]
 
 [features]
 default = ["shader-shaderc"]
