@@ -1,10 +1,5 @@
 use std::{collections::HashMap, iter, rc::Weak};
 
-use wgpu_hal::{
-    Api,
-    Device,
-};
-
 mod backends;
 use backends::{
     backend,
@@ -12,7 +7,13 @@ use backends::{
     ShaderGLSLBackendProcessor,
 };
 
-use crate::rendering::shaders::{Shader, VertexAttribute};
+mod instance_builder;
+pub use instance_builder::ShaderInstanceBuilder;
+
+use crate::rendering::shaders::{
+    Shader,
+    VertexAttribute,
+};
 
 use super::ShaderId;
 
@@ -28,43 +29,44 @@ pub enum ShaderFormat {
     HLSL,
 }
 
-pub struct ShaderBuilder<A: Api> {
-    device: Weak<A::Device>,
-    texture_format: wgpu_types::TextureFormat,
+pub struct ShaderBuilder {
+    device: Weak<wgpu::Device>,
+    surface_format: wgpu::TextureFormat,
     next_shader_id: ShaderId,
     backend: backend::Backend,
-    contexts: HashMap<ShaderId, ShaderContext<A>>,
+    contexts: HashMap<ShaderId, ShaderContext>,
 }
 
-impl<A: Api> ShaderBuilder<A> {
+impl ShaderBuilder {
     pub(crate) fn new(
-        device: Weak<A::Device>,
-        texture_format: wgpu_types::TextureFormat,
+        device: Weak<wgpu::Device>,
+        surface_format: wgpu::TextureFormat,
     ) -> Self {
         Self {
             device,
-            texture_format,
+            surface_format,
             next_shader_id: ShaderId::default(),
             backend: backend::Backend::default(),
             contexts: HashMap::new(),
         }
     }
 
-    pub fn get_context(&self, shader_id: &ShaderId) -> Option<&ShaderContext<A>> {
+    pub fn get_context(&self, shader_id: &ShaderId) -> Option<&ShaderContext> {
         self.contexts.get(shader_id)
     }
 
-    pub fn create<'a>(
+    pub fn create<'a, U>(
         &'a mut self,
         format: ShaderFormat,
         vertex: &'a str,
         fragment: &'a str,
-    ) -> ShaderInstanceBuilder<'a, A> {
+    ) -> ShaderInstanceBuilder<'a, U> {
         ShaderInstanceBuilder::new(self, format, vertex, fragment)
     }
 
     pub fn destroy(&mut self, shader: Shader) {
         if let Some(context) = self.contexts.remove(&shader.id()) {
+            /*
             let device = self.device.upgrade().unwrap();
 
             unsafe {
@@ -73,6 +75,7 @@ impl<A: Api> ShaderBuilder<A> {
                 device.destroy_shader_module(context.vertex_module);
                 device.destroy_shader_module(context.fragment_module);
             }
+            */
         }
     }
 
@@ -86,7 +89,7 @@ impl<A: Api> ShaderBuilder<A> {
         id
     }
 
-    fn build(
+    fn build<U>(
         &mut self,
         format: ShaderFormat,
         vertex: &str,
@@ -108,15 +111,15 @@ impl<A: Api> ShaderBuilder<A> {
 
         self.contexts.insert(
             shader.id(),
-            ShaderContext::new(
+            ShaderContext::new::<_, U>(
                 &shader,
                 device,
-                self.texture_format,
+                self.surface_format,
                 iter::once(vertex_attributes)
                     .map(|attrs| attrs
                         .into_iter()
-                        .map(wgpu_types::VertexAttribute::from)
-                        .collect::<Vec<wgpu_types::VertexAttribute>>()
+                        .map(wgpu::VertexAttribute::from)
+                        .collect::<Vec<wgpu::VertexAttribute>>()
                     )
                     .collect::<Vec<Vec<_>>>()
                     .as_slice(),
@@ -127,48 +130,3 @@ impl<A: Api> ShaderBuilder<A> {
     }
 }
 
-pub struct ShaderInstanceBuilder<'a, A: Api> {
-    builder: &'a mut ShaderBuilder<A>,
-    format: ShaderFormat,
-    vertex: &'a str,
-    fragment: &'a str,
-    vertex_attributes: Vec<VertexAttribute>,
-}
-
-impl<'a, A: Api> ShaderInstanceBuilder<'a, A> {
-    pub(super) fn new(
-        builder: &'a mut ShaderBuilder<A>,
-        format: ShaderFormat,
-        vertex: &'a str,
-        fragment: &'a str,
-    ) -> Self {
-        Self {
-            builder,
-            format,
-            vertex,
-            fragment,
-            vertex_attributes: Vec::new(),
-        }
-    }
-
-    pub fn set_vertex_attributes<I>(mut self, attributes: I) -> Self where
-        I: Iterator<Item = VertexAttribute>
-    {
-        self.vertex_attributes.clear();
-
-        for attribute in attributes {
-            self.vertex_attributes.push(attribute);
-        }
-
-        self
-    }
-
-    pub fn build(self) -> Shader {
-        self.builder.build(
-            self.format,
-            self.vertex,
-            self.fragment,
-            self.vertex_attributes,
-        )
-    }
-}

@@ -7,24 +7,18 @@ edition = "2021"
 #members = ["thunder-raccoon-proc"]
 
 [features]
-default = ["vulkan-backend", "shader-shaderc"] #["no-backend"]
-#default = ["no-backend", "shader-shaderc"]
+default = ["shader-shaderc"]
 
-no-backend = []
-metal-backend = ["wgpu-hal/metal"]
-dx12-backend = ["wgpu-hal/dx12"]
-dx11-backend = ["wgpu-hal/dx11"]
-vulkan-backend = ["wgpu-hal/vulkan"]
-gl-backend = ["wgpu-hal/gles"]
 shader-naga = ["dep:naga"]
 shader-shaderc = ["dep:shaderc"]
 
 [dependencies]
 num-traits = "0.2.15"
 winit = "0.28.3"
-wgpu-hal = "0.15.3"
-wgpu-types = "0.15.2"
+wgpu = { version = "0.15.1", features = ["spirv"] }
+pollster = "0.3.0"
 naga = { version = "0.11.0", features = ["glsl-in", "spv-out"], optional = true }
 shaderc = { version = "0.8.2", optional = true }
 bitflags = "2.0.2"
 raw-window-handle = "0.5.1"
+bytemuck = { version = "1.13.1", features = ["derive"] }

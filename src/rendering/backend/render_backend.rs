@@ -1,138 +1,39 @@
-use std::{
-    borrow::Borrow,
-    iter,
-    mem::{self, ManuallyDrop},
-    rc::Rc,
-};
-
-use wgpu_hal::{
-    Api,
-    FenceValue,
-    Instance,
-    Device,
-    Surface,
-    CommandEncoder,
-    TextureBarrier,
-    TextureUses,
-    TextureViewDescriptor, RenderPassDescriptor, ColorAttachment,
-    Attachment, AttachmentOps, Queue, CommandEncoderDescriptor,
-    BufferBarrier,
-    SurfaceError,
-    DeviceError,
-    BindGroupLayoutDescriptor,
-    BindGroupLayoutFlags,
-    BufferBinding, BufferDescriptor,
-    auxil, Capabilities,
-    BufferUses, MemoryFlags,
-    ShaderModuleDescriptor,
-    ShaderInput,
-};
-
-use wgpu_types::{
-    ImageSubresourceRange,
-    TextureViewDimension,
-    Extent3d,
-    Color,
-    BindGroupLayoutEntry,
-    ShaderStages,
-    BindingType,
-    BufferBindingType,
-    BufferSize,
-    BufferAddress,
-};
+use std::rc::Rc;
 
 use crate::{
-    rendering::shaders::{
-        builder::{ShaderBuilder, ShaderContext},
-        Shader,
-        ShaderData,
-    },
-    math::{num_traits::Num, Vec2},
+    rendering::shaders::builder::ShaderBuilder,
+    math::Vec2,
 };
-
-/*
-use gfx_hal::{
-    command::{
-        ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, SubpassContents,
-        RenderAttachmentInfo,
-    },
-    device::Device,
-    image::Extent,
-    pool::CommandPool,
-    queue::{Queue, QueueGroup},
-    pso::{Rect, Viewport},
-    window::PresentationSurface,
-    Backend,
-};
-*/
 
 use super::{
+    DrawCommand,
     RenderBackendOperationError,
     RenderPresentationSurface,
-    Vertex,
 };
-
-const RENDER_TIMEOUT_NS: u64 = 1_000_000_000;
-const ACQUIRE_TIMEOUT_NS: u64 = 1_000_000_000;
 
 pub type Result<T> = std::result::Result<T, RenderBackendOperationError>;
 
-pub struct ExecutionContext<A: Api> {
-    pub encoder: A::CommandEncoder,
-    pub fence: A::Fence,
-    pub fence_value: FenceValue,
-    pub used_views: Vec<A::TextureView>,
-    pub used_cmd_bufs: Vec<A::CommandBuffer>,
-    pub used_additional_buffers: Vec<A::Buffer>,
-    pub frames_recorded: usize,
+pub struct RenderContext {
+    pub surface_texture: wgpu::SurfaceTexture,
+    pub surface_view: wgpu::TextureView,
 }
 
-impl<A: Api> ExecutionContext<A> {
-    unsafe fn wait_and_clear(&mut self, device: &A::Device) {
-        device.wait(&self.fence, self.fence_value, !0).unwrap();
-        self.encoder.reset_all(self.used_cmd_bufs.drain(..));
-
-        for view in self.used_views.drain(..) {
-            device.destroy_texture_view(view);
-        }
-
-        for buffer in self.used_additional_buffers.drain(..) {
-            device.destroy_buffer(buffer);
-        }
-
-        self.frames_recorded = 0;
-    }
+pub struct RenderBackend {
+    instance: wgpu::Instance,
+    device: Rc<wgpu::Device>,
+    capabilities: wgpu::SurfaceCapabilities,
+    queue: wgpu::Queue,
+    presentation_surface: RenderPresentationSurface,
+    shader_builder: ShaderBuilder,
 }
 
-pub struct RenderContext<A: Api> {
-    pub execution_context_index: usize,
-    pub surface_texture: A::SurfaceTexture,
-    pub surface_texture_view: A::TextureView,
-}
-
-pub struct RenderBackend<A: Api> {
-    instance: A::Instance,
-    device: Rc<A::Device>,
-    capabilities: Capabilities,
-    queue: A::Queue,
-    //pipeline_layout: A::PipelineLayout,
-    //pipeline: A::RenderPipeline,
-    contexts: Vec<ExecutionContext<A>>,
-    context_index: usize,
-    presentation_surface: RenderPresentationSurface<A>,
-    shader_builder: ShaderBuilder<A>,
-}
-
-impl<A: Api> RenderBackend<A> {
+impl RenderBackend {
     pub(super) fn new(
-        instance: A::Instance,
-        device: Rc<A::Device>,
-        capabilities: Capabilities,
-        queue: A::Queue,
-        //pipeline_layout: A::PipelineLayout,
-        //pipeline: A::RenderPipeline,
-        execution_context: ExecutionContext<A>,
-        presentation_surface: RenderPresentationSurface<A>,
+        instance: wgpu::Instance,
+        device: Rc<wgpu::Device>,
+        capabilities: wgpu::SurfaceCapabilities,
+        queue: wgpu::Queue,
+        presentation_surface: RenderPresentationSurface,
     ) -> Self {
         let shader_builder = ShaderBuilder::new(
             Rc::downgrade(&device),
@@ -144,311 +45,70 @@ impl<A: Api> RenderBackend<A> {
             device,
             capabilities,
             queue,
-            //pipeline_layout,
-            //pipeline,
-            contexts: vec![execution_context],
-            context_index: 0,
             presentation_surface,
             shader_builder,
         }
     }
 
-    pub fn presentation_surface(&self) -> &RenderPresentationSurface<A> {
+    pub fn presentation_surface(&self) -> &RenderPresentationSurface {
         &self.presentation_surface
     }
 
-    pub fn mut_presentation_surface(&mut self) -> &mut RenderPresentationSurface<A> {
+    pub fn mut_presentation_surface(&mut self) -> &mut RenderPresentationSurface {
         &mut self.presentation_surface
     }
 
-    pub fn shader_builder(&mut self) -> &mut ShaderBuilder<A> {
+    pub fn shader_builder(&mut self) -> &mut ShaderBuilder {
         &mut self.shader_builder
     }
 
-    pub fn draw_vertices<T: Num>(
-        &mut self,
-        vertices: &[Vec2<T>],
-        shader: &Shader,
-    ) -> Result<()> {
-        let local_alignment = auxil::align_to(
-            //mem::size_of::<Vertex>() as u32,
-            mem::size_of::<Vec2<T>>() as u32,
-            self.capabilities.limits.min_uniform_buffer_offset_alignment,
-        );
-
-        let vertex_buffer_desc = BufferDescriptor {
-            label: Some("vertex"),
-            size: (vertices.len() as BufferAddress) * (local_alignment as BufferAddress),
-            usage: BufferUses::VERTEX | BufferUses::MAP_WRITE,
-            memory_flags: MemoryFlags::PREFER_COHERENT,
-        };
-
-        let vertex_buffer = unsafe { self.device.create_buffer(&vertex_buffer_desc) }
-            .unwrap();
-
-        let vertex_buffer_binding = BufferBinding {
-            buffer: &vertex_buffer,
-            offset: 0,
-            //size: BufferSize::new(mem::size_of::<Vertex>() as _),
-            size: BufferSize::new(mem::size_of::<Vec2<T>>() as _),
-        };
-
-        let size = vertices.len() * local_alignment as usize;
-        unsafe {
-            match self.device.map_buffer(&vertex_buffer, 0..size as BufferAddress) {
-                Ok(mapping) => {
-                    std::ptr::copy_nonoverlapping(vertices.as_ptr() as *const u8, mapping.ptr.as_ptr(), size);
-                    assert!(mapping.is_coherent);
-                    self.device.unmap_buffer(&vertex_buffer).unwrap();
-                },
-                Err(e) => match e {
-                    DeviceError::Lost => println!("Device lost."),
-                    _ => panic!("{}", e),
-                },
-            }
-        }
-
-        //
-
-        let render_context = self.prepare_render()?;
-
-        // draw
-        {
-            let context = &mut self.contexts[self.context_index];
-            let shader_context = self.shader_builder
-                .get_context(&shader.id())
-                .unwrap();
-
-            unsafe {
-                context.encoder.set_render_pipeline(&shader_context.pipeline);
-                context.encoder.set_vertex_buffer(0, vertex_buffer_binding);
-                context.encoder.draw(0, vertices.len() as u32, 0, 1);
-            }
-
-            context.used_additional_buffers.push(vertex_buffer);
-        }
-
-        self.submit(render_context)?;
-
-        Ok(())
+    pub fn draw_vertices<'d>(
+        &'d mut self,
+        vertices: &[Vec2<f32>],
+    ) -> DrawCommand<'d> {
+        DrawCommand::new(
+            &self.device,
+            &self.capabilities,
+            &self.queue,
+            &mut self.presentation_surface,
+            &self.shader_builder,
+            vertices,
+        )
     }
 
-    /*
-    pub fn render(&mut self) -> Result<()> {
-        let render_context = self.prepare_render()?;
-
-        // draw
-        {
-            let context = &mut self.contexts[self.context_index];
-
-            unsafe {
-                context.encoder.draw(0, 3, 0, 1);
-            }
-        }
-
-        self.submit(render_context)?;
-        Ok(())
-    }
-    */
-
-    fn prepare_render(&mut self) -> Result<RenderContext<A>> {
+    pub(super) fn prepare_render(&mut self) -> Result<RenderContext> {
         // reconfigure if needed
         self.presentation_surface.reconfigure_swapchain(false);
 
-        let context = &mut self.contexts[self.context_index];
-        let surface_texture = unsafe { self.presentation_surface.mut_surface().acquire_texture(None) }
-            .unwrap()
-            .unwrap()
-            .texture;
+        let surface_texture = self.presentation_surface
+            .surface()
+            .get_current_texture()
+            .unwrap();
 
-        let target_barrier0 = TextureBarrier {
-            texture: surface_texture.borrow(),
-            range: ImageSubresourceRange::default(),
-            usage: TextureUses::UNINITIALIZED..TextureUses::COLOR_TARGET,
-        };
-
-        unsafe {
-            context.encoder.begin_encoding(Some("frame")).unwrap();
-            context.encoder.transition_textures(iter::once(target_barrier0));
-        }
-
-        let surface_view_desc = TextureViewDescriptor {
-            label: None,
-            format: *self.presentation_surface.surface_format(),
-            dimension: TextureViewDimension::D2,
-            usage: TextureUses::COLOR_TARGET,
-            range: ImageSubresourceRange::default(),
-        };
-
-        let surface_texture_view = unsafe {
-            self.device
-                .create_texture_view(surface_texture.borrow(), &surface_view_desc)
-                .unwrap()
-        };
-
-        let pass_desc = RenderPassDescriptor {
-            label: None,
-            extent: Extent3d {
-                width: self.presentation_surface.width(),
-                height: self.presentation_surface.height(),
-                depth_or_array_layers: 1,
-            },
-            sample_count: 1,
-            color_attachments: &[Some(ColorAttachment {
-                target: Attachment {
-                    view: &surface_texture_view,
-                    usage: TextureUses::COLOR_TARGET,
-                },
-                resolve_target: None,
-                ops: AttachmentOps::STORE,
-                clear_value: Color {
-                    r: 0.1,
-                    g: 0.2,
-                    b: 0.3,
-                    a: 1.0,
-                }
-            })],
-            depth_stencil_attachment: None,
-            multiview: None,
-        };
-
-        unsafe {
-            context.encoder.begin_render_pass(&pass_desc);
-            //context.encoder.set_render_pipeline(&self.pipeline);
-        }
+        let surface_view = surface_texture
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
         Ok(RenderContext {
-            execution_context_index: self.context_index,
             surface_texture,
-            surface_texture_view,
+            surface_view,
         })
     }
 
-    fn submit(&mut self, render_context: RenderContext<A>) -> Result<()> {
+    pub(super) fn submit(
+        &mut self,
+        render_context: RenderContext,
+        encoder: wgpu::CommandEncoder
+    ) -> Result<()> {
         let RenderContext {
-            execution_context_index,
             surface_texture,
-            surface_texture_view,
+            surface_view,
         } = render_context;
 
-        let context = &mut self.contexts[execution_context_index];
-        context.frames_recorded += 1;
-        let do_fence = context.frames_recorded > 100;
-
-        let target_barrier1 = TextureBarrier {
-            texture: surface_texture.borrow(),
-            range: ImageSubresourceRange::default(),
-            usage: TextureUses::COLOR_TARGET..TextureUses::PRESENT,
-        };
-
-        unsafe {
-            context.encoder.end_render_pass();
-            context.encoder.transition_textures(iter::once(target_barrier1));
-        }
-
-        unsafe {
-            let cmd_buf = context.encoder.end_encoding().unwrap();
-
-            let fence_param = if do_fence {
-                Some((&mut context.fence, context.fence_value))
-            } else {
-                None
-            };
-
-            self.queue.submit(&[&cmd_buf], fence_param).unwrap();
-
-            // TODO  maybe we should just discard everything when present failed?
-            //       instead of continuing as nothing happened
-            if let Err(present_err) = self.queue.present(self.presentation_surface.mut_surface(), surface_texture) {
-                match present_err {
-                    SurfaceError::Device(device_err) => {
-                        match device_err {
-                            DeviceError::OutOfMemory => panic!("{}", device_err),
-                            _ => (),
-                        }
-                    },
-                    SurfaceError::Other(other_err) => panic!("{}", other_err),
-                    _ => (),
-                }
-            }
-
-            context.used_cmd_bufs.push(cmd_buf);
-            context.used_views.push(surface_texture_view);
-        }
-
-        if do_fence {
-            println!("Context switch from {}", self.context_index);
-            let old_fence_value = context.fence_value;
-
-            if self.contexts.len() == 1 {
-                let cmd_encoder_desc = CommandEncoderDescriptor {
-                    label: None,
-                    queue: &self.queue,
-                };
-
-                self.contexts.push(unsafe {
-                    ExecutionContext {
-                        encoder: self.device.create_command_encoder(&cmd_encoder_desc)
-                                     .unwrap(),
-                        fence: self.device.create_fence().unwrap(),
-                        fence_value: 0,
-                        used_views: Vec::new(),
-                        used_cmd_bufs: Vec::new(),
-                        used_additional_buffers: Vec::new(),
-                        frames_recorded: 0,
-                    }
-                });
-            }
-
-            self.context_index = (self.context_index + 1) % self.contexts.len();
-            let next = &mut self.contexts[self.context_index];
-
-            unsafe {
-                next.wait_and_clear(&self.device);
-            }
-
-            next.fence_value = old_fence_value + 1;
-        }
+        //let context = &mut self.contexts[execution_context_index];
+        self.queue.submit(Some(encoder.finish()));
+        surface_texture.present();
 
         Ok(())
-    }
-}
-
-impl<A: Api> Drop for RenderBackend<A> {
-    fn drop(&mut self) {
-        /*
-        let device = ManuallyDrop::into_inner(self.device);
-        let instance = ManuallyDrop::into_inner(self.instance);
-        let render_passes = ManuallyDrop::into_inner(self.render_passes);
-        let pipeline_layouts = ManuallyDrop::into_inner(self.pipeline_layouts);
-        let pipelines = ManuallyDrop::into_inner(self.pipelines);
-        let command_pool = ManuallyDrop::into_inner(self.command_pool);
-
-        let submission_complete_fence = ManuallyDrop::into_inner(
-            self.submission_complete_fence
-        );
-
-        let rendering_complete_semaphore = ManuallyDrop::into_inner(
-            self.rendering_complete_semaphore
-        );
-
-        let presentation_surface = ManuallyDrop::into_inner(self.presentation_surface);
-
-        unsafe {
-            for pipeline in pipelines {
-                self.device.destroy_graphics_pipeline(pipeline);
-            }
-
-            for pipeline_layout in pipeline_layouts {
-                self.device.destroy_pipeline_layout(pipeline_layout);
-            }
-
-            for render_pass in render_passes {
-                self.device.destroy_render_pass(render_pass);
-            }
-
-            presentation_surface.destroy_surface(&instance);
-        }
-        */
     }
 }

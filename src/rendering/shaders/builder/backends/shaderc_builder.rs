@@ -4,8 +4,8 @@ use crate::rendering::shaders::{
         ShaderGLSLBackendProcessor,
     },
     Shader,
-    ShaderData,
     ShaderId,
+    ShaderRawData,
     ShaderStage,
 };
 
@@ -55,8 +55,8 @@ impl ShaderGLSLBackendProcessor for ShadercBuilderBackend {
 
         Shader::new(
             id,
-            ShaderStage::new(ShaderData::SpirV(compiled_vertex.as_binary().to_vec())),
-            ShaderStage::new(ShaderData::SpirV(compiled_fragment.as_binary().to_vec())),
+            ShaderStage::new(ShaderRawData::SpirV(compiled_vertex.as_binary().to_vec())),
+            ShaderStage::new(ShaderRawData::SpirV(compiled_fragment.as_binary().to_vec())),
         )
     }
 }

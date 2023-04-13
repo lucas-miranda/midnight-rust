@@ -1,7 +1,8 @@
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
+    event_loop::{ControlFlow, EventLoop},
 };
 
 pub struct WindowEventHandler {
@@ -108,5 +109,17 @@ impl Window {
 
     pub(crate) fn internal_window(&self) -> &winit::window::Window {
         &self.internal_window
+    }
+}
+
+unsafe impl HasRawWindowHandle for Window {
+    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
+        self.internal_window.raw_window_handle()
+    }
+}
+
+unsafe impl HasRawDisplayHandle for Window {
+    fn raw_display_handle(&self) -> raw_window_handle::RawDisplayHandle {
+        self.internal_window.raw_display_handle()
     }
 }

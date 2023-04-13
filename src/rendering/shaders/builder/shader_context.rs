@@ -1,129 +1,111 @@
-use wgpu_hal::{
-    Api,
-    Device,
-    ShaderError,
-    ShaderInput,
-    VertexBufferLayout,
-};
+use std::mem;
 
-use crate::rendering::shaders::{Shader, ShaderData};
+use crate::rendering::shaders::Shader;
 
-pub struct ShaderContext<A: Api> {
-    pub vertex_module: A::ShaderModule,
-    pub fragment_module: A::ShaderModule,
-    pub pipeline_layout: A::PipelineLayout,
-    pub pipeline: A::RenderPipeline,
+pub struct ShaderContext {
+    pub vertex_module: wgpu::ShaderModule,
+    pub fragment_module: wgpu::ShaderModule,
+    pub pipeline_layout: wgpu::PipelineLayout,
+    pub pipeline: wgpu::RenderPipeline,
+    pub bind_group_layout: wgpu::BindGroupLayout,
 }
 
-impl<A: Api> ShaderContext<A> {
-    pub(super) fn new<T>(
+impl ShaderContext {
+    pub(super) fn new<D, U>(
         shader: &Shader,
-        device: T,
-        texture_format: wgpu_types::TextureFormat,
-        vertex_buffers: &[Vec<wgpu_types::VertexAttribute>],
+        device: D,
+        surface_format: wgpu::TextureFormat,
+        vertex_buffers: &[Vec<wgpu::VertexAttribute>],
     ) -> Self where
-        T: AsRef<A::Device>
+        D: AsRef<wgpu::Device>
     {
-        let descriptor = wgpu_hal::ShaderModuleDescriptor {
+        let vertex_module = device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("shader label"),
-            runtime_checks: true,
-        };
+            source: shader.vertex().data().into(),
+        });
 
-        let vertex_module = Self::create_module(
-            device.as_ref(),
-            &descriptor,
-            shader.vertex().data(),
-        )
-        .unwrap();
+        let fragment_module = device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("shader label"),
+            source: shader.fragment().data().into(),
+        });
 
-        let fragment_module = Self::create_module(
-            device.as_ref(),
-            &descriptor,
-            shader.fragment().data(),
-        )
-        .unwrap();
+        // -> Prepare vertex buffers
 
-        // prepare vertex buffers
-
-        // map wgpu_types::VertexAttribute -> wgpu_hal::VertexBufferLayout
+        // map our VertexAttribute -> wgpu_hal::VertexBufferLayout
         let vertex_buffers = vertex_buffers
                 .iter()
-                .map(|attributes| wgpu_hal::VertexBufferLayout {
+                .map(|attributes| wgpu::VertexBufferLayout {
                     array_stride: attributes
                         .iter()
                         .fold(0u64, |s, attr| s + attr.format.size()),
-                    step_mode: wgpu_types::VertexStepMode::Vertex,
+                    step_mode: wgpu::VertexStepMode::Vertex,
                     attributes,
                 })
-                .collect::<Vec<VertexBufferLayout>>();
+                .collect::<Vec<wgpu::VertexBufferLayout>>();
 
-        // create pipeline layout
-        let pipeline_layout_desc = wgpu_hal::PipelineLayoutDescriptor {
-            label: None,
-            flags: wgpu_hal::PipelineLayoutFlags::empty(),
-            bind_group_layouts: &[],
-            push_constant_ranges: &[],
+        // -> Create pipeline layout
+
+        // bind group layouts
+        let bind_group_layout = {
+            let bind_group_layout_desc = wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(
+                                mem::size_of::<U>() as _,
+                            ),
+                        },
+                        count: None,
+                    }
+                ],
+            };
+
+            device.as_ref().create_bind_group_layout(&bind_group_layout_desc)
         };
 
-        let pipeline_layout = unsafe {
-                device.as_ref().create_pipeline_layout(&pipeline_layout_desc)
-            }
-            .unwrap();
-            //.map_err(RenderBackendBuildError::PipelineLayoutFailed)
+        //
 
-        // create pipeline
-        let pipeline_desc = wgpu_hal::RenderPipelineDescriptor {
+        let pipeline_layout = device.as_ref()
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        // -> Create pipeline
+        let pipeline = device.as_ref().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
-            layout: &pipeline_layout,
-            vertex_stage: wgpu_hal::ProgrammableStage {
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
                 module: &vertex_module,
                 entry_point: "main",
+                buffers: &vertex_buffers,
             },
-            //vertex_buffers: &[vertex_buffer_layout],
-            vertex_buffers: &vertex_buffers,
-            fragment_stage: Some(wgpu_hal::ProgrammableStage {
+            fragment: Some(wgpu::FragmentState {
                 module: &fragment_module,
                 entry_point: "main",
+                targets: &[Some(surface_format.into())]
             }),
-            primitive: wgpu_types::PrimitiveState {
-                topology: wgpu_types::PrimitiveTopology::TriangleList,
-                ..wgpu_types::PrimitiveState::default()
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..wgpu::PrimitiveState::default()
             },
             depth_stencil: None,
-            multisample: wgpu_types::MultisampleState::default(),
-            color_targets: &[Some(wgpu_types::ColorTargetState {
-                format: texture_format,
-                blend: Some(wgpu_types::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu_types::ColorWrites::default(),
-            })],
+            multisample: wgpu::MultisampleState::default(),
             multiview: None,
-        };
-
-        let pipeline = unsafe { device.as_ref().create_render_pipeline(&pipeline_desc) }
-            .unwrap();
-            //.map_err(RenderBackendBuildError::PipelineFailed)
+        });
 
         Self {
             vertex_module,
             fragment_module,
             pipeline_layout,
             pipeline,
-        }
-    }
-
-    fn create_module(
-        device: &A::Device,
-        descriptor: &wgpu_hal::ShaderModuleDescriptor,
-        shader_data: &ShaderData,
-    ) -> Result<A::ShaderModule, ShaderError> {
-        match shader_data {
-            ShaderData::SpirV(spirv) => unsafe {
-                device.create_shader_module(&descriptor, ShaderInput::SpirV(spirv))
-            },
-            #[cfg(feature = "shader-naga")]
-            ShaderData::Naga(naga_shader) => {
-                unimplemented!();
-            },
+            bind_group_layout,
         }
     }
 }

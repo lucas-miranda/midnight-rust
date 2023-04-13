@@ -4,12 +4,12 @@ pub(crate) mod builder;
 mod macros;
 
 mod shader_stage;
-pub use shader_stage::{ShaderData, ShaderStage};
+pub use shader_stage::*;
 
 mod shader;
-pub use shader::{Shader, ShaderId};
+pub use shader::*;
 
 mod vertex_attribute;
 pub use vertex_attribute::VertexAttribute;
 
-pub use wgpu_types::VertexFormat as AttributeFormat;
+pub use wgpu::VertexFormat as AttributeFormat;

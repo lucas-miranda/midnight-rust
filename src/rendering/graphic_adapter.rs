@@ -1,17 +1,13 @@
-use num_traits::Num;
 use crate::{
     math::Vec2,
-    rendering::shaders::Shader,
     window::Window,
 };
 
 use super::{
-    ActiveApi,
     GraphicAdapterInitError,
     backend::{
         RenderBackend,
-        RenderBackendBuilder,
-        Vertex,
+        RenderBackendBuilder, DrawCommand,
     },
     shaders::builder::ShaderBuilder,
 };
@@ -19,7 +15,7 @@ use super::{
 pub type Result<T> = std::result::Result<T, super::GraphicAdapterInitError>;
 
 pub struct GraphicAdapter {
-    backend: RenderBackend<ActiveApi>,
+    backend: RenderBackend,
 }
 
 impl GraphicAdapter {
@@ -43,12 +39,12 @@ impl GraphicAdapter {
             .request_reconfigure_swapchain_with(width, height);
     }
 
-    pub fn shader_builder(&mut self) -> &mut ShaderBuilder<ActiveApi> {
+    pub fn shader_builder(&mut self) -> &mut ShaderBuilder {
         self.backend.shader_builder()
     }
 
-    pub fn draw_vertices<T: Num>(&mut self, vertices: &[Vec2<T>], shader: &Shader) {
-        self.backend.draw_vertices(vertices, shader).unwrap();
+    pub fn draw_vertices<'d>(&'d mut self, vertices: &[Vec2<f32>]) -> DrawCommand<'d> {
+        self.backend.draw_vertices(vertices)
     }
 
     /*

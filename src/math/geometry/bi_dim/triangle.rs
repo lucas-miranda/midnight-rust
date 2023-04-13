@@ -24,7 +24,7 @@ pub struct Triangle<T> where
 impl<T> Triangle<T> where
     T: Num
 {
-    pub fn new(a: Point<T>, b: Point<T>, c: Point<T>) -> Self {
+    pub const fn new(a: Point<T>, b: Point<T>, c: Point<T>) -> Self {
         Self {
             a,
             b,

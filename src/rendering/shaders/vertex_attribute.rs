@@ -1,7 +1,8 @@
 use super::AttributeFormat;
 
 /// Describes a vertex attribute in a `Shader`.
-#[derive(Debug, PartialEq, Eq)]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VertexAttribute {
     /// Data format expected.
     pub format: AttributeFormat,
@@ -13,9 +14,9 @@ pub struct VertexAttribute {
     pub location: u32,
 }
 
-impl From<VertexAttribute> for wgpu_types::VertexAttribute {
+impl From<VertexAttribute> for wgpu::VertexAttribute {
     fn from(vertex_attr: VertexAttribute) -> Self {
-        wgpu_types::VertexAttribute {
+        wgpu::VertexAttribute {
             format: vertex_attr.format,
             offset: vertex_attr.offset,
             shader_location: vertex_attr.location,
@@ -23,9 +24,9 @@ impl From<VertexAttribute> for wgpu_types::VertexAttribute {
     }
 }
 
-impl From<&VertexAttribute> for wgpu_types::VertexAttribute {
+impl From<&VertexAttribute> for wgpu::VertexAttribute {
     fn from(vertex_attr: &VertexAttribute) -> Self {
-        wgpu_types::VertexAttribute {
+        wgpu::VertexAttribute {
             format: vertex_attr.format,
             offset: vertex_attr.offset,
             shader_location: vertex_attr.location,
@@ -33,9 +34,9 @@ impl From<&VertexAttribute> for wgpu_types::VertexAttribute {
     }
 }
 
-impl From<&mut VertexAttribute> for wgpu_types::VertexAttribute {
+impl From<&mut VertexAttribute> for wgpu::VertexAttribute {
     fn from(vertex_attr: &mut VertexAttribute) -> Self {
-        wgpu_types::VertexAttribute {
+        wgpu::VertexAttribute {
             format: vertex_attr.format,
             offset: vertex_attr.offset,
             shader_location: vertex_attr.location,

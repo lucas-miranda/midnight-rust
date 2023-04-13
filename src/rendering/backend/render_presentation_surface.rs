@@ -1,49 +1,23 @@
 use std::rc::Weak;
 
-use wgpu_hal::{
-    Adapter,
-    Api,
-    Surface,
-    SurfaceCapabilities,
-    SurfaceConfiguration,
-    TextureUses,
-};
-
-use wgpu_types::{
-    CompositeAlphaMode,
-    TextureFormat,
-    PresentMode,
-    Extent3d,
-};
-
 use crate::math::Vector2;
 
-/*
-use gfx_hal::{
-    adapter::Adapter,
-    format::{ChannelType, Format},
-    window::{Extent2D, PresentationSurface, Surface, SurfaceCapabilities, SwapchainConfig},
-    Backend,
-    Instance,
-};
-*/
-
-pub struct RenderPresentationSurface<A: Api> {
-    device: Weak<A::Device>,
-    adapter: A::Adapter,
-    surface: A::Surface,
-    surface_format: TextureFormat,
+pub struct RenderPresentationSurface {
+    device: Weak<wgpu::Device>,
+    adapter: wgpu::Adapter,
+    surface: wgpu::Surface,
+    surface_format: wgpu::TextureFormat,
     need_reconfigure_swapchain: bool,
     requested_swapchain_size: Option<(u32, u32)>,
     surface_extent: Vector2<u32>, // TODO change to Size<T>
 }
 
-impl<A: Api> RenderPresentationSurface<A> {
+impl RenderPresentationSurface {
     pub(super) fn new(
-        device: Weak<A::Device>,
-        adapter: A::Adapter,
-        surface: A::Surface,
-        surface_format: TextureFormat,
+        device: Weak<wgpu::Device>,
+        adapter: wgpu::Adapter,
+        surface: wgpu::Surface,
+        surface_format: wgpu::TextureFormat,
         width: u32,
         height: u32,
     ) -> Self {
@@ -86,38 +60,25 @@ impl<A: Api> RenderPresentationSurface<A> {
         self.requested_swapchain_size = Some((width, height));
     }
 
-    pub(super) fn adapter(&self) -> &A::Adapter {
+    pub(super) fn adapter(&self) -> &wgpu::Adapter {
         &self.adapter
     }
 
-    pub(super) fn surface(&self) -> &A::Surface {
+    pub(super) fn surface(&self) -> &wgpu::Surface {
         &self.surface
     }
 
-    pub(super) fn mut_surface(&mut self) -> &mut A::Surface {
+    pub(super) fn mut_surface(&mut self) -> &mut wgpu::Surface {
         &mut self.surface
     }
 
-    pub(super) fn surface_format(&self) -> &TextureFormat {
+    pub(super) fn surface_format(&self) -> &wgpu::TextureFormat {
         &self.surface_format
     }
 
-    pub(super) fn capabilities(&self) -> Option<SurfaceCapabilities> {
-        //self.surface.capabilities(&self.adapter.physical_device)
-        unsafe {
-            self.adapter.surface_capabilities(&self.surface)
-        } //.ok_or(HALInitError::SurfaceCapabilitiesFailed)?;
+    pub(super) fn capabilities(&self) -> wgpu::SurfaceCapabilities {
+        self.surface.get_capabilities(&self.adapter)
     }
-
-    /*
-    pub(super) fn swapchain_config(&self) -> SwapchainConfig {
-        SwapchainConfig::from_caps(
-            &self.capabilities(),
-            self.surface_color_format,
-            self.surface_extent,
-        )
-    }
-    */
 
     pub(super) fn reconfigure_swapchain(&mut self, force: bool) {
         if !self.need_reconfigure_swapchain && !force {
@@ -130,27 +91,19 @@ impl<A: Api> RenderPresentationSurface<A> {
         }
 
         let device = self.device.upgrade().unwrap();
+        let surface_caps = self.capabilities();
 
-        let surface_caps = self.capabilities().unwrap();
-        let surface_config = SurfaceConfiguration {
-            swap_chain_size: 3
-                .max(*surface_caps.swap_chain_sizes.start())
-                .min(*surface_caps.swap_chain_sizes.end()),
-            present_mode: PresentMode::Fifo,
-            composite_alpha_mode: CompositeAlphaMode::Opaque,
-            format: TextureFormat::Bgra8UnormSrgb,
-            extent: Extent3d {
-                width: self.width(),
-                height: self.height(),
-                depth_or_array_layers: 1,
-            },
-            usage: TextureUses::COLOR_TARGET,
-            view_formats: Vec::default(),
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_caps.formats[0],
+            width: self.surface_extent.x,
+            height: self.surface_extent.y,
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
         };
 
-        unsafe {
-            self.surface.configure(&device, &surface_config)
-        }.unwrap();
+        self.surface.configure(&device, &surface_config);
 
         println!("Surface reconfigured to {}", self.surface_extent);
         self.need_reconfigure_swapchain = false;

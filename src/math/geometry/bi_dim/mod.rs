@@ -1,5 +1,5 @@
 mod triangle;
-pub use triangle::{Triangle, Tri};
+pub use triangle::*;
 
 mod vector2;
-pub use vector2::{Vector2, Vec2, Point};
+pub use vector2::*;
