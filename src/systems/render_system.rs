@@ -6,9 +6,12 @@ use std::{
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    components::GraphicDisplayer,
+    components::{
+        transform::Transform,
+        GraphicDisplayer,
+    },
     ecs::{
-        component::{self, ComponentQuery},
+        component::{self, BaseQuery, QueryEntry},
         system::System,
     },
     input,
@@ -19,6 +22,7 @@ use crate::{
             Shader,
             VertexAttribute,
         },
+        DrawConfig,
         GraphicAdapter,
     },
     vertex_attrs, math::{Matrix4x4, Vector4},
@@ -63,7 +67,10 @@ impl RenderSystem {
 }
 
 impl System for RenderSystem {
-    type Query<'q> = component::Query<'q, GraphicDisplayer>;
+    type Query<'q> = (
+        component::Query<'q, GraphicDisplayer>,
+        component::Query<'q, Transform>,
+    );
 
     fn setup(&mut self) {
     }
@@ -72,7 +79,13 @@ impl System for RenderSystem {
     }
 
     fn run<'q>(&mut self, query: Self::Query<'q>) {
-        println!("[RenderSystem] {} captured components", query.count());
+        println!(
+            "[RenderSystem] captured components({}): {} GraphicDisplayer, {} Transform",
+            query.iter_components().count(),
+            query.0.iter_components().count(),
+            query.1.iter_components().count()
+        );
+
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
         let my_uniforms = MyUniforms {
@@ -80,14 +93,24 @@ impl System for RenderSystem {
             color: Vector4::new(1.0, 0.0, 1.0, 1.0)
         };
 
-        for component_ref in query.iter_components() {
-            if let Some(ref g) = component_ref.graphic {
-                let mut adapter = graphic_adapter.borrow_mut();
+        for QueryEntry { component: (a, b), .. } in query.iter_components() {
+            if let Some(graphic_displayer) = a {
+                if let Some(transform) = b {
+                    if let Some(ref g) = graphic_displayer.graphic {
+                        let mut adapter = graphic_adapter.borrow_mut();
+                        let draw_config = DrawConfig {
+                            position: transform.position(),
+                        };
 
-                g.draw(&mut adapter)
-                 .using_shader(&self.shader, Some(&my_uniforms))
-                 .submit()
-                 .unwrap();
+                        println!("[RenderSystem] Rendering with {:?}", draw_config);
+                        println!("[RenderSystem] Transform: {:?}", *transform);
+
+                        g.draw(&mut adapter, &draw_config)
+                         .using_shader(&self.shader, Some(&my_uniforms))
+                         .submit()
+                         .unwrap();
+                    }
+                }
             }
         }
     }

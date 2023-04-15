@@ -1,15 +1,16 @@
 use crate::{
-    math::Vec2,
+    math::Vector2,
     window::Window,
 };
 
 use super::{
-    GraphicAdapterInitError,
     backend::{
         RenderBackend,
         RenderBackendBuilder, DrawCommand,
     },
     shaders::builder::ShaderBuilder,
+    GraphicAdapterInitError,
+    DrawConfig,
 };
 
 pub type Result<T> = std::result::Result<T, super::GraphicAdapterInitError>;
@@ -43,8 +44,12 @@ impl GraphicAdapter {
         self.backend.shader_builder()
     }
 
-    pub fn draw_vertices<'d>(&'d mut self, vertices: &[Vec2<f32>]) -> DrawCommand<'d> {
-        self.backend.draw_vertices(vertices)
+    pub fn draw_vertices<'d>(
+        &'d mut self,
+        vertices: Vec<Vector2<f32>>,
+        config: &'d DrawConfig,
+    ) -> DrawCommand<'d> {
+        self.backend.draw_vertices(vertices, config)
     }
 
     /*

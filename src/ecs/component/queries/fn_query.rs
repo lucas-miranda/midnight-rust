@@ -1,26 +1,35 @@
 use std::{
     cell,
-    ops::Deref,
+    collections::BTreeMap,
 };
 
-use crate::ecs::component::{
-    AnyComponent,
-    Components,
-    ComponentQueryIterator,
-    ComponentStrongAnyRef,
+use crate::ecs::{
+    component::{
+        AnyComponent,
+        Components,
+        ComponentQueryIterator,
+        ComponentStrongAnyRef, QueryEntry,
+    },
+    entity::EntityId,
 };
 
-use super::ComponentQuery;
+use super::BaseQuery;
 
+/// Multiple entry query, but only one `Component` per `Entity`.
+/// Instead relying on `Component` type, uses a filter to determine entries, allowing components
+/// with different types.
+///
+/// [`Component`]: crate::ecs::components::Component
+/// [`Entry`]: crate::ecs::entity::Entry
 pub struct FnQuery {
-    container: Vec<ComponentStrongAnyRef>,
+    container: BTreeMap<EntityId, ComponentStrongAnyRef>,
     filter: Box<dyn Fn(&ComponentStrongAnyRef) -> bool>,
 }
 
 impl FnQuery {
     pub fn new<F: 'static + Fn(&ComponentStrongAnyRef) -> bool>(filter: F) -> Self {
         Self {
-            container: Vec::new(),
+            container: BTreeMap::default(),
             filter: Box::new(filter),
         }
     }
@@ -30,7 +39,7 @@ impl FnQuery {
     }
 }
 
-impl ComponentQuery for FnQuery {
+impl BaseQuery for FnQuery {
     type Target<'t> = cell::Ref<'t, dyn AnyComponent> where Self : 't;
 
     fn capture_components(&mut self, components: &Components) {
@@ -40,7 +49,7 @@ impl ComponentQuery for FnQuery {
             match reference.consume() {
                 Ok(strong_ref) => {
                     if (self.filter)(&strong_ref) {
-                        self.container.push(strong_ref);
+                        self.container.insert(*components.entity_id(), strong_ref);
                     }
                 },
                 Err(_) => (),
@@ -48,23 +57,16 @@ impl ComponentQuery for FnQuery {
         }
     }
 
-    fn iter_components<'i>(&'i self) -> ComponentQueryIterator<'i, Self::Target<'i>> {
-        fn convert(c: &ComponentStrongAnyRef) -> cell::Ref<'_, dyn AnyComponent> {
-            c.borrow()
-        }
-
+    fn iter_components<'i>(
+        &'i self
+    ) -> ComponentQueryIterator<'i, QueryEntry<Self::Target<'i>>> {
         ComponentQueryIterator::new(
             self.container
                 .iter()
-                .map(convert)
+                .map(|c| QueryEntry::new(
+                    c.0.clone(),
+                    c.1.borrow(),
+                ))
         )
-    }
-}
-
-impl Deref for FnQuery {
-    type Target = [ComponentStrongAnyRef];
-
-    fn deref(&self) -> &Self::Target {
-        &self.container
     }
 }

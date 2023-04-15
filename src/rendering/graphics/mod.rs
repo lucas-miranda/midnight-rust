@@ -1,7 +1,10 @@
 use std::cell::RefMut;
 
 use crate::{
-    rendering::GraphicAdapter,
+    rendering::{
+        DrawConfig,
+        GraphicAdapter,
+    },
     math::Triangle,
 };
 
@@ -9,7 +12,11 @@ use super::backend::DrawCommand;
 
 
 pub trait Graphic {
-    fn draw<'d>(&'d self, graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>) -> DrawCommand<'d>;
+    fn draw<'d>(
+        &'d self,
+        graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>,
+        config: &'d DrawConfig,
+    ) -> DrawCommand<'d>;
 }
 
 //
@@ -34,7 +41,14 @@ impl<T: Num + Copy> Triangle<T> {
 */
 
 impl Graphic for Triangle<f32> {
-    fn draw<'d>(&'d self, graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>) -> DrawCommand<'d> {
-        graphic_adapter.draw_vertices(&[self.a, self.b, self.c])
+    fn draw<'d>(
+        &'d self,
+        graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>,
+        config: &'d DrawConfig,
+    ) -> DrawCommand<'d> {
+        graphic_adapter.draw_vertices(
+            vec!(self.a, self.b, self.c),
+            config
+        )
     }
 }

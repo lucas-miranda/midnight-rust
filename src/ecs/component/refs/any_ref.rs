@@ -26,6 +26,10 @@ impl ComponentAnyRef {
         }
     }
 
+    pub fn entity_id(&self) -> EntityId {
+        self.entity_id
+    }
+
     pub fn retrieve(&self) -> Result<ComponentStrongAnyRef, &'static str> {
         match self.weak.upgrade() {
             Some(strong) => Ok(strong),

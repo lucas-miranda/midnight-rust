@@ -1,6 +1,7 @@
 use std::any::Any;
+
 use crate::ecs::{
-    component::ComponentQuery,
+    component::BaseQuery,
     entity::EntitiesIter,
 };
 use crate::input;
@@ -15,7 +16,7 @@ pub struct SystemInterface {
 }
 
 impl SystemInterface {
-    pub fn wrap<'a, Q: ComponentQuery + 'static, S: System<Query<'a> = Q> + 'static>(system: S) -> Self {
+    pub fn wrap<'a, Q: BaseQuery + 'static, S: System<Query<'a> = Q> + 'static>(system: S) -> Self {
         SystemInterface {
             system: Box::new(system),
             setup_fn: Box::new(|boxed_system| {

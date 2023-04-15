@@ -32,6 +32,10 @@ impl Components {
         }
     }
 
+    pub fn entity_id(&self) -> &EntityId {
+        &self.entity_id
+    }
+
     pub fn count(&self) -> usize {
         self.entries.len()
     }

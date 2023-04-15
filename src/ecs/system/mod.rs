@@ -1,10 +1,10 @@
 mod system_interface;
 pub use system_interface::SystemInterface;
 
-use crate::ecs::component::ComponentQuery;
+use crate::ecs::component::BaseQuery;
 
 pub trait System {
-    type Query<'q>: ComponentQuery;
+    type Query<'q>: BaseQuery;
 
     fn setup(&mut self);
     fn input<'q>(&mut self, query: Self::Query<'q>, event: &winit::event::DeviceEvent);

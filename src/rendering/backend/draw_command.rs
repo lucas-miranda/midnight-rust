@@ -1,7 +1,4 @@
-use std::{
-    mem,
-    rc::Rc,
-};
+use std::rc::Rc;
 
 use wgpu::util::DeviceExt;
 
@@ -12,8 +9,9 @@ use crate::{
             Shader,
             builder::ShaderBuilder
         },
+        DrawConfig,
     },
-    math::Vec2,
+    math::Vector2,
 };
 
 pub struct DrawCommand<'a> {
@@ -21,12 +19,11 @@ pub struct DrawCommand<'a> {
     capabilities: &'a wgpu::SurfaceCapabilities,
     queue: &'a wgpu::Queue,
     presentation_surface: &'a mut RenderPresentationSurface,
-    vertices_count: u32,
-    vertex_buffer: wgpu::Buffer,
-    vertex_buffer_size: Option<wgpu::BufferSize>,
+    vertex_data: Vec<Vector2<f32>>,
     shader_builder: &'a ShaderBuilder,
     shader: Option<&'a Shader>,
     bind_group: Option<wgpu::BindGroup>,
+    config: &'a DrawConfig,
 }
 
 impl<'a> DrawCommand<'a> {
@@ -36,25 +33,19 @@ impl<'a> DrawCommand<'a> {
         queue: &'a wgpu::Queue,
         presentation_surface: &'a mut RenderPresentationSurface,
         shader_builder: &'a ShaderBuilder,
-        vertices: &[Vec2<f32>],
+        vertex_data: Vec<Vector2<f32>>,
+        config: &'a DrawConfig,
     ) -> Self {
-            let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("vertex buffer"),
-                contents: bytemuck::cast_slice(vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
         Self {
             device,
             capabilities,
             queue,
             presentation_surface,
-            vertices_count: vertices.len() as u32,
-            vertex_buffer,
-            vertex_buffer_size: wgpu::BufferSize::new(mem::size_of::<Vec2<f32>>() as _),
+            vertex_data,
             shader_builder,
             shader: None,
             bind_group: None,
+            config,
         }
     }
 
@@ -94,6 +85,18 @@ impl<'a> DrawCommand<'a> {
     }
 
     pub fn submit(mut self) -> Result<(), super::RenderBackendOperationError> {
+        self.vertex_data
+            .iter_mut()
+            .for_each(|v| *v += self.config.position);
+
+        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("vertex buffer"),
+            contents: bytemuck::cast_slice(self.vertex_data.as_slice()),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        //
+
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("main command encoder"),
         });
@@ -132,8 +135,10 @@ impl<'a> DrawCommand<'a> {
                 pass.set_bind_group(0, &bindings, &[]);
             //}
 
-            pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            pass.draw(0..self.vertices_count, 0..1);
+            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            pass.draw(0..(self.vertex_data.len() as u32), 0..1);
+        } else {
+            unimplemented!();
         }
 
         //self.render_backend.submit(render_context, encoder)?;

@@ -31,6 +31,10 @@ impl<C: 'static + Component> ComponentRef<C> {
         }
     }
 
+    pub fn entity_id(&self) -> EntityId {
+        self.entity_id
+    }
+
     pub fn retrieve(&self) -> Result<ComponentStrongRef<C>, &'static str> {
         match self.weak.upgrade() {
             Some(strong) => Ok(ComponentStrongRef::new(strong)),
@@ -43,9 +47,5 @@ impl<C: 'static + Component> ComponentRef<C> {
             Some(strong) => Ok(ComponentStrongRef::new(strong)),
             None => Err("Can't upgrade from weak ref"),
         }
-    }
-
-    pub fn entity_id(&self) -> EntityId {
-        self.entity_id
     }
 }

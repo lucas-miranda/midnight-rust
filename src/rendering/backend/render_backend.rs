@@ -1,8 +1,11 @@
 use std::rc::Rc;
 
 use crate::{
-    rendering::shaders::builder::ShaderBuilder,
-    math::Vec2,
+    math::Vector2,
+    rendering::{
+        shaders::builder::ShaderBuilder,
+        DrawConfig,
+    },
 };
 
 use super::{
@@ -64,7 +67,8 @@ impl RenderBackend {
 
     pub fn draw_vertices<'d>(
         &'d mut self,
-        vertices: &[Vec2<f32>],
+        vertices: Vec<Vector2<f32>>,
+        config: &'d DrawConfig,
     ) -> DrawCommand<'d> {
         DrawCommand::new(
             &self.device,
@@ -73,6 +77,7 @@ impl RenderBackend {
             &mut self.presentation_surface,
             &self.shader_builder,
             vertices,
+            config,
         )
     }
 
