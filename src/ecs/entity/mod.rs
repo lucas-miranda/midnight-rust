@@ -7,11 +7,6 @@ pub use entities_iter::EntitiesIter;
 mod entity_builder;
 pub use entity_builder::EntityBuilder;
 
-use std::{
-    cell::RefCell,
-    rc::Rc,
-};
-
 use crate::ecs::component::{
     AnyComponent,
     Components

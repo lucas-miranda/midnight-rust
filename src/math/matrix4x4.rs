@@ -1,18 +1,12 @@
-use std::{
-    ops,
-    fmt::{
-        self,
-        Display,
-    },
+use std::fmt::{
+    self,
+    Display,
 };
 
 use bytemuck::{Pod, Zeroable};
 
 use crate::math::num_traits::{
-    cast::{
-        cast,
-        NumCast,
-    },
+    cast::NumCast,
     Num,
 };
 

@@ -363,7 +363,7 @@ impl<T> ops::IndexMut<usize> for Vector3<T> where
         match index {
             0 => &mut self.x,
             1 => &mut self.y,
-            1 => &mut self.z,
+            2 => &mut self.z,
             _ => panic!("Index was out of range, it must be in range [0, 2]")
         }
     }

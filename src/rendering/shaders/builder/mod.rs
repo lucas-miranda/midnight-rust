@@ -65,18 +65,7 @@ impl ShaderBuilder {
     }
 
     pub fn destroy(&mut self, shader: Shader) {
-        if let Some(context) = self.contexts.remove(&shader.id()) {
-            /*
-            let device = self.device.upgrade().unwrap();
-
-            unsafe {
-                device.destroy_render_pipeline(context.pipeline);
-                device.destroy_pipeline_layout(context.pipeline_layout);
-                device.destroy_shader_module(context.vertex_module);
-                device.destroy_shader_module(context.fragment_module);
-            }
-            */
-        }
+        self.contexts.remove(&shader.id());
     }
 
     fn glsl(&self) -> &ShaderGLSLProcessor {

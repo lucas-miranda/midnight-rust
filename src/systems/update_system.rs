@@ -1,7 +1,7 @@
 use crate::ecs::{
     component::{
         self,
-        BaseQuery,
+        //BaseQuery,
         ComponentStrongAnyRef,
     },
     system::System,
@@ -29,10 +29,10 @@ impl<'a> System for UpdateSystem<'a> {
     fn input<'q>(&mut self, _query: Self::Query<'q>, _event: &input::DeviceEvent) {
     }
 
-    fn run<'q>(&mut self, query: Self::Query<'q>) {
+    fn run<'q>(&mut self, _query: Self::Query<'q>) {
         //println!("[UpdateSystem] {} captured components", query.count());
 
-        for component_ref in query.iter_components() {
+        //for component_ref in query.iter_components() {
             //let mut component = component_ref.borrow_mut();
 
             //let updateStep: Option<&dyn UpdateStep> = component.as_any().downcast_ref();
@@ -40,7 +40,7 @@ impl<'a> System for UpdateSystem<'a> {
 
 
             //component.run();
-        }
+        //}
     }
 
     fn create_query<'q>(&self) -> Self::Query<'q> {

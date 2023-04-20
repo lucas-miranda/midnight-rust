@@ -106,10 +106,6 @@ impl Window {
     pub fn request_redraw(&self) {
         self.internal_window.request_redraw();
     }
-
-    pub(crate) fn internal_window(&self) -> &winit::window::Window {
-        &self.internal_window
-    }
 }
 
 unsafe impl HasRawWindowHandle for Window {

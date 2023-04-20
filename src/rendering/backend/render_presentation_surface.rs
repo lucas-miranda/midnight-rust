@@ -60,16 +60,8 @@ impl RenderPresentationSurface {
         self.requested_swapchain_size = Some((width, height));
     }
 
-    pub(super) fn adapter(&self) -> &wgpu::Adapter {
-        &self.adapter
-    }
-
     pub(super) fn surface(&self) -> &wgpu::Surface {
         &self.surface
-    }
-
-    pub(super) fn mut_surface(&mut self) -> &mut wgpu::Surface {
-        &mut self.surface
     }
 
     pub(super) fn surface_format(&self) -> &wgpu::TextureFormat {

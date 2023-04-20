@@ -51,9 +51,7 @@ impl<'a> RenderBackendBuilder<'a> {
         let weak_device = Rc::downgrade(&device);
 
         Ok(RenderBackend::new(
-            instance,
             device,
-            surface_caps,
             queue,
             RenderPresentationSurface::new(
                 weak_device,

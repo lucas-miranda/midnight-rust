@@ -16,7 +16,6 @@ use crate::{
 
 pub struct DrawCommand<'a> {
     device: &'a Rc<wgpu::Device>,
-    capabilities: &'a wgpu::SurfaceCapabilities,
     queue: &'a wgpu::Queue,
     presentation_surface: &'a mut RenderPresentationSurface,
     vertex_data: Vec<Vector2<f32>>,
@@ -29,7 +28,6 @@ pub struct DrawCommand<'a> {
 impl<'a> DrawCommand<'a> {
     pub fn new(
         device: &'a Rc<wgpu::Device>,
-        capabilities: &'a wgpu::SurfaceCapabilities,
         queue: &'a wgpu::Queue,
         presentation_surface: &'a mut RenderPresentationSurface,
         shader_builder: &'a ShaderBuilder,
@@ -38,7 +36,6 @@ impl<'a> DrawCommand<'a> {
     ) -> Self {
         Self {
             device,
-            capabilities,
             queue,
             presentation_surface,
             vertex_data,

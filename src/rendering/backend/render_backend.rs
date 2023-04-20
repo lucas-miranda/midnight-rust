@@ -10,21 +10,11 @@ use crate::{
 
 use super::{
     DrawCommand,
-    RenderBackendOperationError,
     RenderPresentationSurface,
 };
 
-pub type Result<T> = std::result::Result<T, RenderBackendOperationError>;
-
-pub struct RenderContext {
-    pub surface_texture: wgpu::SurfaceTexture,
-    pub surface_view: wgpu::TextureView,
-}
-
 pub struct RenderBackend {
-    instance: wgpu::Instance,
     device: Rc<wgpu::Device>,
-    capabilities: wgpu::SurfaceCapabilities,
     queue: wgpu::Queue,
     presentation_surface: RenderPresentationSurface,
     shader_builder: ShaderBuilder,
@@ -32,9 +22,7 @@ pub struct RenderBackend {
 
 impl RenderBackend {
     pub(super) fn new(
-        instance: wgpu::Instance,
         device: Rc<wgpu::Device>,
-        capabilities: wgpu::SurfaceCapabilities,
         queue: wgpu::Queue,
         presentation_surface: RenderPresentationSurface,
     ) -> Self {
@@ -44,9 +32,7 @@ impl RenderBackend {
         );
 
         Self {
-            instance,
             device,
-            capabilities,
             queue,
             presentation_surface,
             shader_builder,
@@ -72,48 +58,11 @@ impl RenderBackend {
     ) -> DrawCommand<'d> {
         DrawCommand::new(
             &self.device,
-            &self.capabilities,
             &self.queue,
             &mut self.presentation_surface,
             &self.shader_builder,
             vertices,
             config,
         )
-    }
-
-    pub(super) fn prepare_render(&mut self) -> Result<RenderContext> {
-        // reconfigure if needed
-        self.presentation_surface.reconfigure_swapchain(false);
-
-        let surface_texture = self.presentation_surface
-            .surface()
-            .get_current_texture()
-            .unwrap();
-
-        let surface_view = surface_texture
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
-        Ok(RenderContext {
-            surface_texture,
-            surface_view,
-        })
-    }
-
-    pub(super) fn submit(
-        &mut self,
-        render_context: RenderContext,
-        encoder: wgpu::CommandEncoder
-    ) -> Result<()> {
-        let RenderContext {
-            surface_texture,
-            surface_view,
-        } = render_context;
-
-        //let context = &mut self.contexts[execution_context_index];
-        self.queue.submit(Some(encoder.finish()));
-        surface_texture.present();
-
-        Ok(())
     }
 }

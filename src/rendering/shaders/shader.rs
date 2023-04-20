@@ -1,6 +1,6 @@
-use std::{
-    any::Any,
-    hash::{Hash, Hasher},
+use std::hash::{
+    Hash,
+    Hasher,
 };
 
 use super::ShaderStage;
@@ -11,7 +11,6 @@ pub struct Shader {
     id: ShaderId,
     vertex: ShaderStage,
     fragment: ShaderStage,
-    //pub uniforms: Box<dyn Any>,
 }
 
 impl Shader {
