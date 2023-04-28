@@ -6,4 +6,5 @@ pub mod math;
 pub mod rendering;
 pub mod systems;
 pub mod time;
+pub mod util;
 pub mod window;

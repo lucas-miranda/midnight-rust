@@ -1,5 +1,7 @@
 use std::rc::Weak;
 
+use wgpu::SurfaceError;
+
 use crate::math::Vector2;
 
 pub struct RenderPresentationSurface {
@@ -58,6 +60,22 @@ impl RenderPresentationSurface {
     pub fn request_reconfigure_swapchain_with(&mut self, width: u32, height: u32) {
         self.need_reconfigure_swapchain = true;
         self.requested_swapchain_size = Some((width, height));
+    }
+
+    pub(in crate::rendering) fn acquire_surface(
+        &mut self
+    ) -> Result<(wgpu::SurfaceTexture, wgpu::TextureView), SurfaceError> {
+        // reconfigure if needed
+        self.reconfigure_swapchain(false);
+
+        let surface_texture = self.surface
+            .get_current_texture()?;
+
+        let surface_view = surface_texture
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        Ok((surface_texture, surface_view))
     }
 
     pub(super) fn surface(&self) -> &wgpu::Surface {
@@ -132,37 +150,4 @@ impl RenderPresentationSurface {
         self.need_reconfigure_swapchain = false;
         */
     }
-
-    /*
-    pub(super) unsafe fn destroy_surface(&mut self, instance: &B::Instance) {
-        instance.destroy_surface(self.surface);
-    }
-
-    fn get_surface_color_format(adapter: &Adapter<B>, surface: &B::Surface) -> Format {
-        match surface.supported_formats(&adapter.physical_device) {
-            Some(formats) => {
-                formats
-                    .into_iter()
-                    .find(|format| format.base_format().1 == ChannelType::Srgb)
-                    .unwrap_or_else(|| {
-                        // default format
-                        *formats.get(0).unwrap_or(&Format::Rgba8Srgb)
-                    })
-            },
-            None => Format::Rgba8Srgb,
-        }
-    }
-    */
 }
-
-/*
-impl<B: Backend> Drop for RenderPresentationSurface<B> {
-    fn drop(&mut self) {
-        let device = self.device.upgrade().unwrap();
-
-        unsafe {
-            self.surface.unconfigure_swapchain(&device);
-        }
-    }
-}
-*/

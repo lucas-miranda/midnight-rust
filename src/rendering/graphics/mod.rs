@@ -1,3 +1,6 @@
+mod grid;
+pub use grid::Grid;
+
 use std::cell::RefMut;
 
 use crate::{
@@ -8,15 +11,19 @@ use crate::{
     math::Triangle,
 };
 
-use super::backend::DrawCommand;
+use super::backend::{
+    RenderPass,
+    DrawCommand,
+};
 
 
 pub trait Graphic {
     fn draw<'d>(
         &'d self,
-        graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>,
+        //graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>,
+        draw_command: &'d mut DrawCommand,
         config: &'d DrawConfig,
-    ) -> DrawCommand<'d>;
+    ) -> RenderPass<'d>;
 }
 
 //
@@ -43,10 +50,10 @@ impl<T: Num + Copy> Triangle<T> {
 impl Graphic for Triangle<f32> {
     fn draw<'d>(
         &'d self,
-        graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>,
+        draw_command: &'d mut DrawCommand,
         config: &'d DrawConfig,
-    ) -> DrawCommand<'d> {
-        graphic_adapter.draw_vertices(
+    ) -> RenderPass<'d> {
+        draw_command.draw_vertices(
             vec!(self.a, self.b, self.c),
             config
         )

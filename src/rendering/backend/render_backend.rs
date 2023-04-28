@@ -10,14 +10,15 @@ use crate::{
 
 use super::{
     DrawCommand,
+    RenderPass,
     RenderPresentationSurface,
 };
 
 pub struct RenderBackend {
-    device: Rc<wgpu::Device>,
-    queue: wgpu::Queue,
-    presentation_surface: RenderPresentationSurface,
-    shader_builder: ShaderBuilder,
+    pub device: Rc<wgpu::Device>,
+    pub queue: wgpu::Queue,
+    pub presentation_surface: RenderPresentationSurface,
+    pub shader_builder: ShaderBuilder,
 }
 
 impl RenderBackend {
@@ -39,6 +40,15 @@ impl RenderBackend {
         }
     }
 
+    /*
+    pub fn device(&self) -> &Rc<wgpu::Device> {
+        &self.device
+    }
+
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
+    }
+
     pub fn presentation_surface(&self) -> &RenderPresentationSurface {
         &self.presentation_surface
     }
@@ -50,13 +60,15 @@ impl RenderBackend {
     pub fn shader_builder(&mut self) -> &mut ShaderBuilder {
         &mut self.shader_builder
     }
+    */
 
+    /*
     pub fn draw_vertices<'d>(
         &'d mut self,
         vertices: Vec<Vector2<f32>>,
         config: &'d DrawConfig,
-    ) -> DrawCommand<'d> {
-        DrawCommand::new(
+    ) -> RenderPass<'d> {
+        RenderPass::new(
             &self.device,
             &self.queue,
             &mut self.presentation_surface,
@@ -65,4 +77,5 @@ impl RenderBackend {
             config,
         )
     }
+    */
 }

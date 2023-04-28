@@ -16,6 +16,9 @@ pub use render_presentation_surface::RenderPresentationSurface;
 mod draw_command;
 pub use draw_command::*;
 
+mod render_pass;
+pub use render_pass::RenderPass;
+
 #[repr(C)] //, align(256))]
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {

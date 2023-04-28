@@ -1,163 +1,120 @@
-use std::rc::Rc;
-
-use wgpu::util::DeviceExt;
+use wgpu::SurfaceError;
 
 use crate::{
+    math::{Vector2, Tri},
     rendering::{
-        backend::RenderPresentationSurface,
-        shaders::{
-            Shader,
-            builder::ShaderBuilder
-        },
+        shaders::builder::ShaderBuilder,
+        Color,
         DrawConfig,
+        graphics::Graphic,
     },
-    math::Vector2,
+};
+
+use super::{
+    RenderPass,
+    RenderPresentationSurface,
 };
 
 pub struct DrawCommand<'a> {
-    device: &'a Rc<wgpu::Device>,
+    encoder: Option<wgpu::CommandEncoder>,
     queue: &'a wgpu::Queue,
-    presentation_surface: &'a mut RenderPresentationSurface,
-    vertex_data: Vec<Vector2<f32>>,
+    surface_texture: wgpu::SurfaceTexture,
+    surface_view: wgpu::TextureView,
+    device: &'a wgpu::Device,
     shader_builder: &'a ShaderBuilder,
-    shader: Option<&'a Shader>,
-    bind_group: Option<wgpu::BindGroup>,
-    config: &'a DrawConfig,
 }
 
 impl<'a> DrawCommand<'a> {
-    pub fn new(
-        device: &'a Rc<wgpu::Device>,
+    pub(in crate::rendering) fn new(
+        device: &'a wgpu::Device,
         queue: &'a wgpu::Queue,
         presentation_surface: &'a mut RenderPresentationSurface,
         shader_builder: &'a ShaderBuilder,
-        vertex_data: Vec<Vector2<f32>>,
-        config: &'a DrawConfig,
-    ) -> Self {
-        Self {
-            device,
+    ) -> Result<Self, SurfaceError> {
+        device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let (surface_texture, surface_view) = presentation_surface.acquire_surface()?;
+
+        Ok(Self {
+            encoder: None,
             queue,
-            presentation_surface,
-            vertex_data,
+            surface_texture,
+            surface_view,
+            device,
             shader_builder,
-            shader: None,
-            bind_group: None,
-            config,
-        }
+        })
     }
 
-    pub fn using_shader<U: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit>(mut self, shader: &'a Shader, uniforms: Option<&U>) -> Self {
-        self.shader = Some(shader);
+    pub fn begin(&mut self, label: wgpu::Label) {
+        self.encoder = Some(self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label,
+        }));
+    }
 
-        self.bind_group = if let Some(uni) = uniforms {
-            let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("uniforms buffer"),
-                contents: bytemuck::cast_slice(&[*uni]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+    pub fn end(&mut self) {
+        match self.encoder.take() {
+            Some(encoder) => self.queue.submit(Some(encoder.finish())),
+            None => panic!("Missing encoder. Command should start() before end()."),
+        };
+    }
 
-            let shader_context = self.shader_builder
-                .get_context(&shader.id())
-                .unwrap();
+    pub fn present(self) {
+        self.surface_texture.present();
+    }
 
-            let bind_group = Some(
-                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Uniform Bind Group"),
-                    layout: &shader_context.bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: uniform_buffer.as_entire_binding(),
-                        }
-                    ],
-                })
-            );
+    pub fn clear<'d, C: Into<Color<f32>>, U: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit>(&mut self, color: C, shader: &'d crate::rendering::shaders::Shader, uniforms: Option<&U>) -> Result<(), super::RenderBackendOperationError> {
+        self.begin(None);
 
-            bind_group
-        } else {
-            None
+        let t = Tri::new(Vector2::new(0.0, 0.0), Vector2::new(10.0, 10.0),  Vector2::new(10.0, 0.0));
+
+        let draw_config = DrawConfig {
+            position: Vector2::new(40.0, 40.0),
         };
 
-        self
-    }
+        t.draw(self, &draw_config)
+         .using_shader::<()>(shader, None)
+         .submit()
+         .unwrap();
 
-    pub fn submit(mut self) -> Result<(), super::RenderBackendOperationError> {
-        self.vertex_data
-            .iter_mut()
-            .for_each(|v| *v += self.config.position);
+        /*
+        if let Some(ref mut encoder) = &mut self.encoder {
+            let pass = RenderPass::new(
+                encoder,
+                &self.surface_view,
+                &self.device,
+                &self.shader_builder,
+                vec!(t.a, t.b, t.c),
+                &DrawConfig::EMPTY,
+            );
 
-        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("vertex buffer"),
-            contents: bytemuck::cast_slice(self.vertex_data.as_slice()),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        //
-
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("main command encoder"),
-        });
-
-        self.device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let (surface_texture, surface_view) = self.prepare_render();
-
-        if let Some(bindings) = self.bind_group {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &surface_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            });
-
-            if let Some(shader) = self.shader {
-                let shader_context = self.shader_builder
-                    .get_context(&shader.id())
-                    .unwrap();
-
-                pass.set_pipeline(&shader_context.pipeline);
-            }
-
-            //if let Some(bindings) = self.bind_group {
-                pass.set_bind_group(0, &bindings, &[]);
-            //}
-
-            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.draw(0..(self.vertex_data.len() as u32), 0..1);
-        } else {
-            unimplemented!();
+            pass.clear_color(color)
+                .using_shader::<()>(shader, None)
+                .submit()?;
         }
 
-        //self.render_backend.submit(render_context, encoder)?;
-        self.queue.submit(Some(encoder.finish()));
-        surface_texture.present();
+        */
+
+        self.end();
 
         Ok(())
     }
 
-    fn prepare_render(&mut self) -> (wgpu::SurfaceTexture, wgpu::TextureView) {
-        // reconfigure if needed
-        self.presentation_surface.reconfigure_swapchain(false);
-
-        let surface_texture = self.presentation_surface
-            .surface()
-            .get_current_texture()
-            .unwrap();
-
-        let surface_view = surface_texture
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
-        (surface_texture, surface_view)
+    pub fn draw_vertices<'d>(
+        &'d mut self,
+        vertices: Vec<Vector2<f32>>,
+        config: &'d DrawConfig,
+    ) -> RenderPass<'d> {
+        match &mut self.encoder {
+            Some(ref mut encoder) => {
+                RenderPass::new(
+                    encoder,
+                    &self.surface_view,
+                    &self.device,
+                    &self.shader_builder,
+                    vertices,
+                    config,
+                )
+            },
+            None => panic!("Missing encoder. Command should start() before drawing something."),
+        }
     }
 }

@@ -1,3 +1,5 @@
+use wgpu::SurfaceError;
+
 use crate::{
     math::Vector2,
     window::Window,
@@ -5,12 +7,14 @@ use crate::{
 
 use super::{
     backend::{
+        DrawCommand,
         RenderBackend,
-        RenderBackendBuilder, DrawCommand,
+        RenderBackendBuilder,
+        RenderPass,
     },
     shaders::builder::ShaderBuilder,
-    GraphicAdapterInitError,
     DrawConfig,
+    GraphicAdapterInitError,
 };
 
 pub type Result<T> = std::result::Result<T, super::GraphicAdapterInitError>;
@@ -36,27 +40,29 @@ impl GraphicAdapter {
 
     pub fn request_resize_surface(&mut self, width: u32, height: u32) {
         self.backend
-            .mut_presentation_surface()
+            .presentation_surface
             .request_reconfigure_swapchain_with(width, height);
     }
 
     pub fn shader_builder(&mut self) -> &mut ShaderBuilder {
-        self.backend.shader_builder()
+        &mut self.backend.shader_builder
+    }
+
+    pub fn begin_draw(&mut self) -> std::result::Result<DrawCommand, SurfaceError> {
+        DrawCommand::new(
+            &self.backend.device,
+            &self.backend.queue,
+            &mut self.backend.presentation_surface,
+            &self.backend.shader_builder,
+        )
     }
 
     pub fn draw_vertices<'d>(
         &'d mut self,
+        draw_command: &'d mut DrawCommand<'d>,
         vertices: Vec<Vector2<f32>>,
         config: &'d DrawConfig,
-    ) -> DrawCommand<'d> {
-        self.backend.draw_vertices(vertices, config)
+    ) -> RenderPass<'d> {
+        draw_command.draw_vertices(vertices, config)
     }
-
-    /*
-    pub fn render(&mut self) {
-        self.backend
-            .render()
-            .unwrap()
-    }
-    */
 }

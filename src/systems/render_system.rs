@@ -22,10 +22,12 @@ use crate::{
             Shader,
             VertexAttribute,
         },
+        Color,
         DrawConfig,
         GraphicAdapter,
+        graphics::Graphic,
     },
-    vertex_attrs, math::{Matrix4x4, Vector4},
+    vertex_attrs, math::{Matrix4x4, Vector4, Vector2, Tri},
 };
 
 //
@@ -34,7 +36,7 @@ use crate::{
 #[repr(C)]
 struct MyUniforms {
     pub view: Matrix4x4<f32>,
-    pub color: Vector4<f32>,
+    pub color: Color<f32>,
 }
 
 //
@@ -90,28 +92,69 @@ impl System for RenderSystem {
 
         let my_uniforms = MyUniforms {
             view: Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0),
-            color: Vector4::new(1.0, 0.0, 1.0, 1.0)
+            color: Color::rgba(1.0, 0.0, 1.0, 1.0),
         };
 
-        for QueryEntry { component: (a, b), .. } in query.iter_components() {
-            if let Some(graphic_displayer) = a {
-                if let Some(transform) = b {
-                    if let Some(ref g) = graphic_displayer.graphic {
-                        let mut adapter = graphic_adapter.borrow_mut();
-                        let draw_config = DrawConfig {
-                            position: transform.position(),
-                        };
+        let mut adapter = graphic_adapter.borrow_mut();
 
-                        println!("[RenderSystem] Rendering with {:?}", draw_config);
-                        println!("[RenderSystem] Transform: {:?}", *transform);
+        match adapter.begin_draw() {
+            Ok(mut draw_command) => {
+                //println!("clearing...");
+                //draw_command.clear(Color::<u8>::rgb(70, 35, 110), &self.shader)
+                /*
+                draw_command.clear(Color::<u8>::rgb(255, 0, 0), &self.shader, Some(&my_uniforms))
+                            .unwrap();
+                */
+                //println!("clearing done!");
 
-                        g.draw(&mut adapter, &draw_config)
-                         .using_shader(&self.shader, Some(&my_uniforms))
-                         .submit()
-                         .unwrap();
+                let draw_config = DrawConfig {
+                    position: Vector2::new(50.0, 50.0),
+                };
+
+                println!("[RenderSystem] Rendering with {:?}", draw_config);
+                //println!("[RenderSystem] Transform: {:?}", *transform);
+
+                let g = Tri::new(Vector2::new(0.0, 0.0), Vector2::new(0.0, 0.0),  Vector2::new(0.0, 0.0));
+
+                draw_command.begin(None);
+
+                g.draw(&mut draw_command, &draw_config)
+                 .clear_color(Color::<u8>::rgb(70, 35, 110))
+                 .using_shader(&self.shader, Some(&my_uniforms))
+                 .submit()
+                 .unwrap();
+
+                draw_command.end();
+
+                /*
+                for QueryEntry { component: (a, b), .. } in query.iter_components() {
+                    if let Some(graphic_displayer) = a {
+                        draw_command.begin(None);
+
+                        if let Some(transform) = b {
+                            if let Some(ref g) = graphic_displayer.graphic {
+                                let draw_config = DrawConfig {
+                                    position: transform.position(),
+                                };
+
+                                println!("[RenderSystem] Rendering with {:?}", draw_config);
+                                println!("[RenderSystem] Transform: {:?}", *transform);
+
+                                g.draw(&mut draw_command, &draw_config)
+                                 .using_shader(&self.shader, Some(&my_uniforms))
+                                 .submit()
+                                 .unwrap();
+                            }
+                        }
+
+                        draw_command.end();
                     }
                 }
-            }
+                */
+
+                draw_command.present();
+            },
+            Err(_e) => return,
         }
     }
 

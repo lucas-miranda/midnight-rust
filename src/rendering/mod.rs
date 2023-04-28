@@ -10,3 +10,6 @@ pub use graphic_adapter_init_error::GraphicAdapterInitError;
 
 mod draw_config;
 pub use draw_config::DrawConfig;
+
+mod color;
+pub use color::Color;
