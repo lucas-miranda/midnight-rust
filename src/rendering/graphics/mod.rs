@@ -11,18 +11,16 @@ use crate::{
     math::Triangle,
 };
 
-use super::backend::{
+use super::{backend::{
     RenderPass,
     DrawCommand,
-};
+}, shaders::ShaderInstance};
 
 
 pub trait Graphic {
     fn draw<'d>(
         &'d self,
-        //graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>,
-        draw_command: &'d mut DrawCommand,
-        config: &'d DrawConfig,
+        pass: RenderPass<'d>,
     ) -> RenderPass<'d>;
 }
 
@@ -50,12 +48,8 @@ impl<T: Num + Copy> Triangle<T> {
 impl Graphic for Triangle<f32> {
     fn draw<'d>(
         &'d self,
-        draw_command: &'d mut DrawCommand,
-        config: &'d DrawConfig,
+        pass: RenderPass<'d>,
     ) -> RenderPass<'d> {
-        draw_command.draw_vertices(
-            vec!(self.a, self.b, self.c),
-            config
-        )
+        pass.extend_vertices(vec!(self.a, self.b, self.c))
     }
 }

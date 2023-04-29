@@ -20,7 +20,8 @@ use crate::{
             builder::ShaderFormat,
             AttributeFormat,
             Shader,
-            VertexAttribute,
+            ShaderId,
+            VertexAttribute, ShaderInstance,
         },
         Color,
         DrawConfig,
@@ -39,11 +40,31 @@ struct MyUniforms {
     pub color: Color<f32>,
 }
 
+struct MyShader {
+    shader: Shader,
+    uniforms: MyUniforms,
+}
+
+impl MyShader {
+}
+
+impl ShaderInstance for MyShader {
+    type Uniforms = MyUniforms;
+
+    fn id(&self) -> ShaderId {
+        self.shader.id()
+    }
+
+    fn uniforms(&self) -> &Self::Uniforms {
+        &self.uniforms
+    }
+}
+
 //
 
 pub struct RenderSystem {
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
-    shader: Shader,
+    shader: MyShader,
 }
 
 impl RenderSystem {
@@ -63,7 +84,10 @@ impl RenderSystem {
 
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),
-            shader,
+            shader: MyShader {
+                shader,
+                uniforms: Default::default(),
+            },
         }
     }
 }
@@ -90,7 +114,7 @@ impl System for RenderSystem {
 
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
-        let my_uniforms = MyUniforms {
+        self.shader.uniforms = MyUniforms {
             view: Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0),
             color: Color::rgba(1.0, 0.0, 1.0, 1.0),
         };
@@ -99,37 +123,12 @@ impl System for RenderSystem {
 
         match adapter.begin_draw() {
             Ok(mut draw_command) => {
-                //println!("clearing...");
-                //draw_command.clear(Color::<u8>::rgb(70, 35, 110), &self.shader)
-                /*
-                draw_command.clear(Color::<u8>::rgb(255, 0, 0), &self.shader, Some(&my_uniforms))
+                // TODO  use default shader to clear screen
+                draw_command.clear(Color::<u8>::rgb(70, 35, 110), &self.shader)
                             .unwrap();
-                */
-                //println!("clearing done!");
 
-                let draw_config = DrawConfig {
-                    position: Vector2::new(50.0, 50.0),
-                };
-
-                println!("[RenderSystem] Rendering with {:?}", draw_config);
-                //println!("[RenderSystem] Transform: {:?}", *transform);
-
-                let g = Tri::new(Vector2::new(0.0, 0.0), Vector2::new(0.0, 0.0),  Vector2::new(0.0, 0.0));
-
-                draw_command.begin(None);
-
-                g.draw(&mut draw_command, &draw_config)
-                 .clear_color(Color::<u8>::rgb(70, 35, 110))
-                 .using_shader(&self.shader, Some(&my_uniforms))
-                 .submit()
-                 .unwrap();
-
-                draw_command.end();
-
-                /*
                 for QueryEntry { component: (a, b), .. } in query.iter_components() {
                     if let Some(graphic_displayer) = a {
-                        draw_command.begin(None);
 
                         if let Some(transform) = b {
                             if let Some(ref g) = graphic_displayer.graphic {
@@ -140,17 +139,14 @@ impl System for RenderSystem {
                                 println!("[RenderSystem] Rendering with {:?}", draw_config);
                                 println!("[RenderSystem] Transform: {:?}", *transform);
 
-                                g.draw(&mut draw_command, &draw_config)
-                                 .using_shader(&self.shader, Some(&my_uniforms))
+                                let pass = draw_command.begin(&self.shader, &draw_config, None);
+                                g.draw(pass)
                                  .submit()
                                  .unwrap();
                             }
                         }
-
-                        draw_command.end();
                     }
                 }
-                */
 
                 draw_command.present();
             },

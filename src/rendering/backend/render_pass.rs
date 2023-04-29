@@ -4,7 +4,7 @@ use crate::{
     rendering::{
         shaders::{
             Shader,
-            builder::ShaderBuilder
+            builder::{ShaderBuilder, ShaderContext}, ShaderInstance
         },
         Color,
         DrawConfig,
@@ -13,34 +13,35 @@ use crate::{
 };
 
 pub struct RenderPass<'a> {
-    encoder: &'a mut wgpu::CommandEncoder,
+    encoder: wgpu::CommandEncoder,
+    queue: &'a wgpu::Queue,
     device: &'a wgpu::Device,
     surface_view: &'a wgpu::TextureView,
     vertex_data: Vec<Vector2<f32>>,
     bind_group: Option<wgpu::BindGroup>,
-    shader_builder: &'a ShaderBuilder,
-    shader: Option<&'a Shader>,
+    shader_context: &'a ShaderContext,
     config: &'a DrawConfig,
     clear_color: Option<Color<f32>>,
 }
 
 impl<'a> RenderPass<'a> {
-    pub fn new(
-        encoder: &'a mut wgpu::CommandEncoder,
+    pub(super) fn new(
+        encoder: wgpu::CommandEncoder,
+        queue: &'a wgpu::Queue,
         surface_view: &'a wgpu::TextureView,
         device: &'a wgpu::Device,
-        shader_builder: &'a ShaderBuilder,
-        vertex_data: Vec<Vector2<f32>>,
+        bind_group: Option<wgpu::BindGroup>,
+        shader_context: &'a ShaderContext,
         config: &'a DrawConfig,
     ) -> Self {
         Self {
             encoder,
+            queue,
             device,
             surface_view,
-            vertex_data,
-            bind_group: None,
-            shader_builder,
-            shader: None,
+            vertex_data: Vec::new(),
+            bind_group,
+            shader_context,
             config,
             clear_color: None,
         }
@@ -52,13 +53,21 @@ impl<'a> RenderPass<'a> {
         self
     }
 
-    pub fn using_shader<U: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit>(mut self, shader: &'a Shader, uniforms: Option<&U>) -> Self {
+    pub fn extend_vertices<T: IntoIterator<Item = Vector2<f32>>>(mut self, iter: T) -> Self {
+        self.vertex_data.extend(iter);
+
+        self
+    }
+
+    //pub fn using_shader<U: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit>(mut self, shader: &'a Shader, uniforms: Option<&U>) -> Self {
+    /*
+    pub fn using_shader(mut self, shader: &'a S) -> Self {
         self.shader = Some(shader);
 
-        self.bind_group = if let Some(uni) = uniforms {
+        self.bind_group = {
             let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("uniforms buffer"),
-                contents: bytemuck::cast_slice(&[*uni]),
+                contents: bytemuck::cast_slice(&[*shader.uniforms()]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
@@ -80,40 +89,24 @@ impl<'a> RenderPass<'a> {
             );
 
             bind_group
-        } else {
-            let shader_context = self.shader_builder
-                .get_context(&shader.id())
-                .unwrap();
-
-            let bind_group = Some(
-                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Uniform Bind Group"),
-                    layout: &shader_context.bind_group_layout,
-                    entries: &[
-                    ],
-                })
-            );
-
-            bind_group
         };
 
         self
     }
+    */
 
     pub fn submit(mut self) -> Result<(), super::RenderBackendOperationError> {
-        let vertex_buffer = if self.vertex_data.is_empty() {
-            None
-        } else {
+        if !self.vertex_data.is_empty() {
             self.vertex_data
                 .iter_mut()
                 .for_each(|v| *v += self.config.position);
+        }
 
-            Some(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("vertex buffer"),
-                contents: bytemuck::cast_slice(self.vertex_data.as_slice()),
-                usage: wgpu::BufferUsages::VERTEX,
-            }))
-        };
+        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("vertex buffer"),
+            contents: bytemuck::cast_slice(self.vertex_data.as_slice()),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
         // create wgpu render pass and submit
 
@@ -136,24 +129,18 @@ impl<'a> RenderPass<'a> {
                 depth_stencil_attachment: None,
             });
 
-            if let Some(shader) = self.shader {
-                let shader_context = self.shader_builder
-                    .get_context(&shader.id())
-                    .unwrap();
-
-                pass.set_pipeline(&shader_context.pipeline);
-            }
+            pass.set_pipeline(&self.shader_context.pipeline);
 
             if let Some(ref bindings) = self.bind_group {
                 pass.set_bind_group(0, bindings, &[]);
             }
 
-            if let Some(ref v_buffer) = vertex_buffer {
-                pass.set_vertex_buffer(0, v_buffer.slice(..));
-            }
-
+            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             pass.draw(0..(self.vertex_data.len() as u32), 0..1);
         }
+
+        // TODO  try to submit multiple command buffers at once?
+        self.queue.submit(Some(self.encoder.finish()));
 
         Ok(())
     }

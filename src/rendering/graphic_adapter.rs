@@ -12,7 +12,7 @@ use super::{
         RenderBackendBuilder,
         RenderPass,
     },
-    shaders::builder::ShaderBuilder,
+    shaders::{builder::ShaderBuilder, ShaderInstance},
     DrawConfig,
     GraphicAdapterInitError,
 };
@@ -57,12 +57,14 @@ impl GraphicAdapter {
         )
     }
 
+    /*
     pub fn draw_vertices<'d>(
         &'d mut self,
-        draw_command: &'d mut DrawCommand<'d>,
+        pass: &'d RenderPass<'d>,
         vertices: Vec<Vector2<f32>>,
         config: &'d DrawConfig,
     ) -> RenderPass<'d> {
-        draw_command.draw_vertices(vertices, config)
+        draw_command.draw_vertices(pass, vertices, config)
     }
+    */
 }

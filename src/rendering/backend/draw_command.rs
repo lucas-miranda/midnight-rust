@@ -1,9 +1,10 @@
 use wgpu::SurfaceError;
+use wgpu::util::DeviceExt;
 
 use crate::{
     math::{Vector2, Tri},
     rendering::{
-        shaders::builder::ShaderBuilder,
+        shaders::{builder::ShaderBuilder, ShaderInstance},
         Color,
         DrawConfig,
         graphics::Graphic,
@@ -16,7 +17,6 @@ use super::{
 };
 
 pub struct DrawCommand<'a> {
-    encoder: Option<wgpu::CommandEncoder>,
     queue: &'a wgpu::Queue,
     surface_texture: wgpu::SurfaceTexture,
     surface_view: wgpu::TextureView,
@@ -35,7 +35,6 @@ impl<'a> DrawCommand<'a> {
         let (surface_texture, surface_view) = presentation_surface.acquire_surface()?;
 
         Ok(Self {
-            encoder: None,
             queue,
             surface_texture,
             surface_view,
@@ -44,36 +43,55 @@ impl<'a> DrawCommand<'a> {
         })
     }
 
-    pub fn begin(&mut self, label: wgpu::Label) {
-        self.encoder = Some(self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label,
-        }));
-    }
+    pub fn begin<'p, S: ShaderInstance>(&'p mut self, shader: &S, config: &'p DrawConfig, label: wgpu::Label) -> RenderPass<'p> {
+        let shader_context = self.shader_builder
+            .get_context(&shader.id())
+            .unwrap();
 
-    pub fn end(&mut self) {
-        match self.encoder.take() {
-            Some(encoder) => self.queue.submit(Some(encoder.finish())),
-            None => panic!("Missing encoder. Command should start() before end()."),
+        let bind_group = {
+            let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("uniforms buffer"),
+                contents: bytemuck::cast_slice(&[*shader.uniforms()]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+
+            let bind_group = Some(
+                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Uniform Bind Group"),
+                    layout: &shader_context.bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: uniform_buffer.as_entire_binding(),
+                        }
+                    ],
+                })
+            );
+
+            bind_group
         };
+
+        RenderPass::new(
+            self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label,
+            }),
+            &self.queue,
+            &self.surface_view,
+            &self.device,
+            bind_group,
+            shader_context,
+            config,
+        )
     }
 
     pub fn present(self) {
         self.surface_texture.present();
     }
 
-    pub fn clear<'d, C: Into<Color<f32>>, U: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit>(&mut self, color: C, shader: &'d crate::rendering::shaders::Shader, uniforms: Option<&U>) -> Result<(), super::RenderBackendOperationError> {
-        self.begin(None);
-
-        let t = Tri::new(Vector2::new(0.0, 0.0), Vector2::new(10.0, 10.0),  Vector2::new(10.0, 0.0));
-
-        let draw_config = DrawConfig {
-            position: Vector2::new(40.0, 40.0),
-        };
-
-        t.draw(self, &draw_config)
-         .using_shader::<()>(shader, None)
-         .submit()
-         .unwrap();
+    pub fn clear<'p, C: Into<Color<f32>>, S: ShaderInstance>(&'p mut self, color: C, shader: &'p S) -> Result<(), super::RenderBackendOperationError> {
+        self.begin(shader, &DrawConfig::EMPTY, None)
+            .clear_color(color)
+            .submit()
 
         /*
         if let Some(ref mut encoder) = &mut self.encoder {
@@ -92,29 +110,17 @@ impl<'a> DrawCommand<'a> {
         }
 
         */
-
-        self.end();
-
-        Ok(())
     }
 
-    pub fn draw_vertices<'d>(
+    /*
+    pub fn draw_vertices<'d, S: ShaderInstance>(
         &'d mut self,
+        pass: &'d RenderPass<'d>,
         vertices: Vec<Vector2<f32>>,
         config: &'d DrawConfig,
-    ) -> RenderPass<'d> {
-        match &mut self.encoder {
-            Some(ref mut encoder) => {
-                RenderPass::new(
-                    encoder,
-                    &self.surface_view,
-                    &self.device,
-                    &self.shader_builder,
-                    vertices,
-                    config,
-                )
-            },
-            None => panic!("Missing encoder. Command should start() before drawing something."),
-        }
+    ) -> &RenderPass<'d> {
+        //pass.set_vertices(vertices);
+        pass
     }
+    */
 }
