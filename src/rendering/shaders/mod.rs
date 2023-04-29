@@ -17,6 +17,7 @@ pub use wgpu::VertexFormat as AttributeFormat;
 pub trait ShaderInstance {
     type Uniforms: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit;
 
+    fn new(shader: Shader) -> Self;
     fn id(&self) -> ShaderId;
     fn uniforms(&self) -> &Self::Uniforms;
 }

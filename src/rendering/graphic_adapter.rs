@@ -1,19 +1,14 @@
 use wgpu::SurfaceError;
 
-use crate::{
-    math::Vector2,
-    window::Window,
-};
+use crate::window::Window;
 
 use super::{
     backend::{
         DrawCommand,
         RenderBackend,
         RenderBackendBuilder,
-        RenderPass,
     },
-    shaders::{builder::ShaderBuilder, ShaderInstance},
-    DrawConfig,
+    shaders::builder::ShaderBuilder,
     GraphicAdapterInitError,
 };
 
@@ -48,7 +43,7 @@ impl GraphicAdapter {
         &mut self.backend.shader_builder
     }
 
-    pub fn begin_draw(&mut self) -> std::result::Result<DrawCommand, SurfaceError> {
+    pub fn prepare_draw(&mut self) -> std::result::Result<DrawCommand, SurfaceError> {
         DrawCommand::new(
             &self.backend.device,
             &self.backend.queue,
@@ -56,15 +51,4 @@ impl GraphicAdapter {
             &self.backend.shader_builder,
         )
     }
-
-    /*
-    pub fn draw_vertices<'d>(
-        &'d mut self,
-        pass: &'d RenderPass<'d>,
-        vertices: Vec<Vector2<f32>>,
-        config: &'d DrawConfig,
-    ) -> RenderPass<'d> {
-        draw_command.draw_vertices(pass, vertices, config)
-    }
-    */
 }

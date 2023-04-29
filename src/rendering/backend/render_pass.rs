@@ -2,10 +2,7 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     rendering::{
-        shaders::{
-            Shader,
-            builder::{ShaderBuilder, ShaderContext}, ShaderInstance
-        },
+        shaders::builder::ShaderContext,
         Color,
         DrawConfig,
     },
@@ -58,42 +55,6 @@ impl<'a> RenderPass<'a> {
 
         self
     }
-
-    //pub fn using_shader<U: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit>(mut self, shader: &'a Shader, uniforms: Option<&U>) -> Self {
-    /*
-    pub fn using_shader(mut self, shader: &'a S) -> Self {
-        self.shader = Some(shader);
-
-        self.bind_group = {
-            let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("uniforms buffer"),
-                contents: bytemuck::cast_slice(&[*shader.uniforms()]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-            let shader_context = self.shader_builder
-                .get_context(&shader.id())
-                .unwrap();
-
-            let bind_group = Some(
-                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Uniform Bind Group"),
-                    layout: &shader_context.bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: uniform_buffer.as_entire_binding(),
-                        }
-                    ],
-                })
-            );
-
-            bind_group
-        };
-
-        self
-    }
-    */
 
     pub fn submit(mut self) -> Result<(), super::RenderBackendOperationError> {
         if !self.vertex_data.is_empty() {

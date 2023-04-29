@@ -1,5 +1,5 @@
 use crate::rendering::shaders::{
-    Shader,
+    ShaderInstance,
     VertexAttribute,
 };
 
@@ -46,8 +46,8 @@ impl<'a, U> ShaderInstanceBuilder<'a, U> {
         self
     }
 
-    pub fn build(self) -> Shader {
-        self.builder.build::<U>(
+    pub fn build<S: ShaderInstance>(self) -> S {
+        self.builder.build::<U, S>(
             self.format,
             self.vertex,
             self.fragment,

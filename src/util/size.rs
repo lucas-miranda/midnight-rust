@@ -1,21 +1,12 @@
-use std::{
-    ops,
-    fmt::{
-        self,
-        Display,
-    },
+use std::fmt::{
+    self,
+    Display,
 };
 
-use bytemuck::{Pod, Zeroable};
+use crate::math::num_traits::Num;
 
-use crate::math::num_traits::{
-    cast::{
-        cast,
-        NumCast,
-    },
-    Num,
-};
-
+#[repr(C)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Size<T> where
     T: Num
 {
@@ -30,6 +21,23 @@ impl<T> Size<T> where
         Self {
             width,
             height,
+        }
+    }
+}
+
+impl<T: Num + Display> Display for Size<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{}, {}", self.width, self.height)
+    }
+}
+
+impl<T> From<&(T, T)> for Size<T> where
+    T: Num + Copy
+{
+    fn from(tuple: &(T, T)) -> Self {
+        Self {
+            width: tuple.0,
+            height: tuple.1,
         }
     }
 }

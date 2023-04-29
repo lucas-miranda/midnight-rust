@@ -2,7 +2,7 @@ use std::rc::Weak;
 
 use wgpu::SurfaceError;
 
-use crate::math::Vector2;
+use crate::util::Size;
 
 pub struct RenderPresentationSurface {
     device: Weak<wgpu::Device>,
@@ -11,7 +11,7 @@ pub struct RenderPresentationSurface {
     surface_format: wgpu::TextureFormat,
     need_reconfigure_swapchain: bool,
     requested_swapchain_size: Option<(u32, u32)>,
-    surface_extent: Vector2<u32>, // TODO change to Size<T>
+    surface_extent: Size<u32>,
 }
 
 impl RenderPresentationSurface {
@@ -23,8 +23,6 @@ impl RenderPresentationSurface {
         width: u32,
         height: u32,
     ) -> Self {
-        //let surface_color_format = Self::get_surface_color_format(&adapter, &surface);
-
         Self {
             device,
             adapter,
@@ -32,21 +30,20 @@ impl RenderPresentationSurface {
             surface_format,
             need_reconfigure_swapchain: true,
             requested_swapchain_size: None,
-            surface_extent: Vector2::new(width, height),
-            //surface_color_format,
+            surface_extent: Size::new(width, height),
         }
     }
 
     pub fn size(&self) -> (u32, u32) {
-        (self.surface_extent.x, self.surface_extent.y)
+        (self.surface_extent.width, self.surface_extent.height)
     }
 
     pub fn width(&self) -> u32 {
-        self.surface_extent.x
+        self.surface_extent.width
     }
 
     pub fn height(&self) -> u32 {
-        self.surface_extent.y
+        self.surface_extent.height
     }
 
     pub fn has_request_reconfigure_swapchain(&self) -> bool {
@@ -78,10 +75,6 @@ impl RenderPresentationSurface {
         Ok((surface_texture, surface_view))
     }
 
-    pub(super) fn surface(&self) -> &wgpu::Surface {
-        &self.surface
-    }
-
     pub(super) fn surface_format(&self) -> &wgpu::TextureFormat {
         &self.surface_format
     }
@@ -106,8 +99,8 @@ impl RenderPresentationSurface {
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_caps.formats[0],
-            width: self.surface_extent.x,
-            height: self.surface_extent.y,
+            width: self.surface_extent.width,
+            height: self.surface_extent.height,
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],

@@ -15,7 +15,7 @@ use crate::rendering::shaders::{
     VertexAttribute,
 };
 
-use super::ShaderId;
+use super::{ShaderId, ShaderInstance};
 
 mod shader_context;
 pub(crate) use shader_context::ShaderContext;
@@ -78,13 +78,13 @@ impl ShaderBuilder {
         id
     }
 
-    fn build<U>(
+    fn build<U, S: ShaderInstance>(
         &mut self,
         format: ShaderFormat,
         vertex: &str,
         fragment: &str,
         vertex_attributes: Vec<VertexAttribute>,
-    ) -> Shader {
+    ) -> S {
         let id = self.next_shader_id();
 
         let shader = match format {
@@ -115,7 +115,7 @@ impl ShaderBuilder {
             )
         );
 
-        shader
+        S::new(shader)
     }
 }
 

@@ -11,30 +11,35 @@ use crate::{
         GraphicDisplayer,
     },
     ecs::{
-        component::{self, BaseQuery, QueryEntry},
+        component::{
+            self,
+            BaseQuery,
+            QueryEntry,
+        },
         system::System,
     },
     input,
+    math::Matrix4x4,
     rendering::{
         shaders::{
             builder::ShaderFormat,
             AttributeFormat,
             Shader,
             ShaderId,
-            VertexAttribute, ShaderInstance,
+            ShaderInstance,
+            VertexAttribute,
         },
         Color,
         DrawConfig,
         GraphicAdapter,
-        graphics::Graphic,
     },
-    vertex_attrs, math::{Matrix4x4, Vector4, Vector2, Tri},
+    vertex_attrs,
 };
 
 //
 
-#[derive(Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C)]
+#[derive(Copy, Clone, Default, Pod, Zeroable)]
 struct MyUniforms {
     pub view: Matrix4x4<f32>,
     pub color: Color<f32>,
@@ -50,6 +55,13 @@ impl MyShader {
 
 impl ShaderInstance for MyShader {
     type Uniforms = MyUniforms;
+
+    fn new(shader: Shader) -> Self {
+        Self {
+            shader,
+            uniforms: Default::default(),
+        }
+    }
 
     fn id(&self) -> ShaderId {
         self.shader.id()
@@ -84,10 +96,7 @@ impl RenderSystem {
 
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),
-            shader: MyShader {
-                shader,
-                uniforms: Default::default(),
-            },
+            shader,
         }
     }
 }
@@ -121,7 +130,7 @@ impl System for RenderSystem {
 
         let mut adapter = graphic_adapter.borrow_mut();
 
-        match adapter.begin_draw() {
+        match adapter.prepare_draw() {
             Ok(mut draw_command) => {
                 // TODO  use default shader to clear screen
                 draw_command.clear(Color::<u8>::rgb(70, 35, 110), &self.shader)

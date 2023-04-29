@@ -1,14 +1,13 @@
 use wgpu::SurfaceError;
 use wgpu::util::DeviceExt;
 
-use crate::{
-    math::{Vector2, Tri},
-    rendering::{
-        shaders::{builder::ShaderBuilder, ShaderInstance},
-        Color,
-        DrawConfig,
-        graphics::Graphic,
+use crate::rendering::{
+    shaders::{
+        builder::ShaderBuilder,
+        ShaderInstance,
     },
+    Color,
+    DrawConfig,
 };
 
 use super::{
@@ -92,35 +91,5 @@ impl<'a> DrawCommand<'a> {
         self.begin(shader, &DrawConfig::EMPTY, None)
             .clear_color(color)
             .submit()
-
-        /*
-        if let Some(ref mut encoder) = &mut self.encoder {
-            let pass = RenderPass::new(
-                encoder,
-                &self.surface_view,
-                &self.device,
-                &self.shader_builder,
-                vec!(t.a, t.b, t.c),
-                &DrawConfig::EMPTY,
-            );
-
-            pass.clear_color(color)
-                .using_shader::<()>(shader, None)
-                .submit()?;
-        }
-
-        */
     }
-
-    /*
-    pub fn draw_vertices<'d, S: ShaderInstance>(
-        &'d mut self,
-        pass: &'d RenderPass<'d>,
-        vertices: Vec<Vector2<f32>>,
-        config: &'d DrawConfig,
-    ) -> &RenderPass<'d> {
-        //pass.set_vertices(vertices);
-        pass
-    }
-    */
 }
