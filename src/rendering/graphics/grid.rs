@@ -1,16 +1,13 @@
-use std::cell::RefMut;
-
 use crate::{
-    rendering::{
-        //graphics::DrawCommand,
-        DrawConfig,
-        GraphicAdapter,
-    },
-    math::Triangle,
+    math::Vector2,
     util::Size,
 };
 
-use super::Graphic;
+use super::{
+    Graphic,
+    DrawConfig,
+    RenderState,
+};
 
 pub struct Grid {
     pub columns: u32,
@@ -21,17 +18,27 @@ pub struct Grid {
 impl Grid {
 }
 
-/*
 impl Graphic for Grid {
     fn draw<'d>(
         &'d self,
-        graphic_adapter: &'d mut RefMut<'_, GraphicAdapter>,
-        config: &'d DrawConfig,
-    ) -> DrawCommand<'d> {
-        graphic_adapter.draw_vertices(
-            vec!(self.a, self.b, self.c),
-            config
+        state: &'d mut dyn RenderState,
+        mut draw_config: DrawConfig,
+    ) {
+        let origin = Vector2::new(0.0, 0.0);
+        draw_config.shader_id = 1;
+
+        state.extend(
+            vec!(
+                origin,
+                origin + Vector2::new(0, self.rows * self.tile_size.height).convert(),
+
+                origin + Vector2::new(self.columns * self.tile_size.width, self.rows * self.tile_size.height).convert(),
+                origin,
+
+                origin + Vector2::new(self.columns * self.tile_size.width, self.rows * self.tile_size.height).convert(),
+                origin + Vector2::new(self.columns * self.tile_size.width, 0).convert(),
+            ).iter(),
+            draw_config,
         )
     }
 }
-*/

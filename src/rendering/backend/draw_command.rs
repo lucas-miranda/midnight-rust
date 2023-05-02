@@ -42,7 +42,9 @@ impl<'a> DrawCommand<'a> {
         })
     }
 
-    pub fn begin<'p, S: ShaderInstance>(&'p mut self, shader: &S, config: &'p DrawConfig, label: wgpu::Label) -> RenderPass<'p> {
+    pub fn begin<'p>(&'p mut self, shader: &'p dyn ShaderInstance, label: wgpu::Label) -> RenderPass<'p> {
+        //let shader = shader_ref.as_ref();
+
         let shader_context = self.shader_builder
             .get_context(&shader.id())
             .unwrap();
@@ -50,7 +52,7 @@ impl<'a> DrawCommand<'a> {
         let bind_group = {
             let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("uniforms buffer"),
-                contents: bytemuck::cast_slice(&[*shader.uniforms()]),
+                contents: shader.uniforms_as_slice(),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
@@ -79,7 +81,6 @@ impl<'a> DrawCommand<'a> {
             &self.device,
             bind_group,
             shader_context,
-            config,
         )
     }
 
@@ -87,8 +88,8 @@ impl<'a> DrawCommand<'a> {
         self.surface_texture.present();
     }
 
-    pub fn clear<'p, C: Into<Color<f32>>, S: ShaderInstance>(&'p mut self, color: C, shader: &'p S) -> Result<(), super::RenderBackendOperationError> {
-        self.begin(shader, &DrawConfig::EMPTY, None)
+    pub fn clear<'p, C: Into<Color<f32>>>(&'p mut self, color: C, shader: &'p dyn ShaderInstance) -> Result<(), super::RenderBackendOperationError> {
+        self.begin(shader, None)
             .clear_color(color)
             .submit()
     }

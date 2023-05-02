@@ -1,3 +1,4 @@
+use std::slice::Iter;
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -5,6 +6,7 @@ use crate::{
         shaders::builder::ShaderContext,
         Color,
         DrawConfig,
+        RenderState,
     },
     math::Vector2,
 };
@@ -17,7 +19,6 @@ pub struct RenderPass<'a> {
     vertex_data: Vec<Vector2<f32>>,
     bind_group: Option<wgpu::BindGroup>,
     shader_context: &'a ShaderContext,
-    config: &'a DrawConfig,
     clear_color: Option<Color<f32>>,
 }
 
@@ -29,7 +30,6 @@ impl<'a> RenderPass<'a> {
         device: &'a wgpu::Device,
         bind_group: Option<wgpu::BindGroup>,
         shader_context: &'a ShaderContext,
-        config: &'a DrawConfig,
     ) -> Self {
         Self {
             encoder,
@@ -39,7 +39,6 @@ impl<'a> RenderPass<'a> {
             vertex_data: Vec::new(),
             bind_group,
             shader_context,
-            config,
             clear_color: None,
         }
     }
@@ -50,18 +49,22 @@ impl<'a> RenderPass<'a> {
         self
     }
 
+    /*
     pub fn extend_vertices<T: IntoIterator<Item = Vector2<f32>>>(mut self, iter: T) -> Self {
         self.vertex_data.extend(iter);
 
         self
     }
+    */
 
     pub fn submit(mut self) -> Result<(), super::RenderBackendOperationError> {
+        /*
         if !self.vertex_data.is_empty() {
             self.vertex_data
                 .iter_mut()
                 .for_each(|v| *v += self.config.position);
         }
+        */
 
         let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("vertex buffer"),
@@ -104,5 +107,14 @@ impl<'a> RenderPass<'a> {
         self.queue.submit(Some(self.encoder.finish()));
 
         Ok(())
+    }
+}
+
+impl<'a> RenderState for RenderPass<'a> {
+    fn extend(&mut self, vertices: Iter<Vector2<f32>>, draw_config: DrawConfig) {
+        self.vertex_data.extend(
+            vertices.into_iter()
+                    .map(|v| *v + draw_config.position)
+        );
     }
 }

@@ -11,5 +11,11 @@ pub use graphic_adapter_init_error::GraphicAdapterInitError;
 mod draw_config;
 pub use draw_config::DrawConfig;
 
+mod draw_batcher;
+pub use draw_batcher::DrawBatcher;
+
 mod color;
 pub use color::Color;
+
+mod render_state;
+pub use render_state::RenderState;

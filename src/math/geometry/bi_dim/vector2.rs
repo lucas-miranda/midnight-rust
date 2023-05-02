@@ -9,6 +9,7 @@ use std::{
 use bytemuck::{Pod, Zeroable};
 
 use crate::math::num_traits::{
+    self,
     cast::{
         cast,
         NumCast,
@@ -59,6 +60,21 @@ impl<T> Vector2<T> where
         Some(Self::new(
             cast::<U, T>(x)?,
             cast::<U, T>(y)?,
+        ))
+    }
+
+    pub fn convert<U>(self) -> Vector2<U> where
+        U: Num + NumCast
+    {
+        self.try_convert().unwrap()
+    }
+
+    pub fn try_convert<U>(self) -> Option<Vector2<U>> where
+        U: Num + NumCast
+    {
+        Some(Vector2::<U>::new(
+            cast::<T, U>(self.x)?,
+            cast::<T, U>(self.y)?,
         ))
     }
 }

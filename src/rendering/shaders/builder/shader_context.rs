@@ -16,6 +16,7 @@ impl ShaderContext {
         device: D,
         surface_format: wgpu::TextureFormat,
         vertex_buffers: &[Vec<wgpu::VertexAttribute>],
+        primitive_topology: super::PrimitiveTopology,
     ) -> Self where
         D: AsRef<wgpu::Device>
     {
@@ -92,7 +93,7 @@ impl ShaderContext {
                 targets: &[Some(surface_format.into())]
             }),
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+                topology: primitive_topology,
                 ..wgpu::PrimitiveState::default()
             },
             depth_stencil: None,

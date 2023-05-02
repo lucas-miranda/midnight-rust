@@ -10,6 +10,8 @@ use backends::{
 mod instance_builder;
 pub use instance_builder::ShaderInstanceBuilder;
 
+pub use wgpu::PrimitiveTopology;
+
 use crate::rendering::shaders::{
     Shader,
     VertexAttribute,
@@ -60,8 +62,9 @@ impl ShaderBuilder {
         format: ShaderFormat,
         vertex: &'a str,
         fragment: &'a str,
+        primitive_topology: PrimitiveTopology,
     ) -> ShaderInstanceBuilder<'a, U> {
-        ShaderInstanceBuilder::new(self, format, vertex, fragment)
+        ShaderInstanceBuilder::new(self, format, vertex, fragment, primitive_topology)
     }
 
     pub fn destroy(&mut self, shader: Shader) {
@@ -84,6 +87,7 @@ impl ShaderBuilder {
         vertex: &str,
         fragment: &str,
         vertex_attributes: Vec<VertexAttribute>,
+        primitive_topology: PrimitiveTopology,
     ) -> S {
         let id = self.next_shader_id();
 
@@ -112,6 +116,7 @@ impl ShaderBuilder {
                     )
                     .collect::<Vec<Vec<_>>>()
                     .as_slice(),
+                primitive_topology,
             )
         );
 
