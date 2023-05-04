@@ -204,13 +204,13 @@ impl System for RenderSystem {
         {
             let mut uniforms = self.shader.uniforms.get_mut(0).unwrap();
             uniforms.view = Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0);
-            uniforms.color = Color::rgba(1.0, 0.0, 1.0, 1.0);
+            uniforms.color = Color::<f32>::rgba_hex(0x0000FFFF);
         }
 
         {
             let mut uniforms = self.shader2.uniforms.get_mut(0).unwrap();
             uniforms.view = Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0);
-            uniforms.color = Color::rgba(1.0, 0.0, 1.0, 1.0);
+            uniforms.color = Color::<f32>::rgba_hex(0xFFFF00FF);
         }
 
         let mut adapter = graphic_adapter.borrow_mut();
@@ -218,7 +218,7 @@ impl System for RenderSystem {
         match adapter.prepare_draw() {
             Ok(mut draw_command) => {
                 // TODO  use default shader to clear screen
-                draw_command.clear(Color::<u8>::rgb(70, 35, 110), &self.shader)
+                draw_command.clear(Color::<u8>::rgb_hex(0x46236e), &self.shader)
                             .unwrap();
 
                 // collects everything indo a batcher
@@ -238,26 +238,13 @@ impl System for RenderSystem {
                                 println!("[RenderSystem] Rendering with {:?}", draw_config);
                                 println!("[RenderSystem] Transform: {:?}", *transform);
 
-                                // TODO  make graphic be able to have a Shader defined (which will
-                                // be forwarded to batcher)
                                 g.draw(&mut draw_batcher, draw_config)
                             }
                         }
                     }
                 }
 
-                // TODO  make DrawBatcher dispatchs batches itself
                 draw_batcher.flush(&mut draw_command);
-
-                /*
-                {
-                    // make a pass from batched vertices
-                    let mut pass = draw_command.begin(&self.shader, None);
-                    pass.extend(vertices.collect::<Vec<_>>().iter(), DrawConfig::EMPTY);
-                    pass.submit().unwrap();
-                }
-                */
-
                 draw_command.present();
             },
             Err(_e) => return,
