@@ -77,6 +77,24 @@ impl Color<u8> {
             a: 255,
         }
     }
+
+    pub const fn rgba_hex(rgba: u32) -> Self {
+        Self {
+            r: ((rgba & 0xFF000000) >> 24) as u8,
+            g: ((rgba & 0x00FF0000) >> 16) as u8,
+            b: ((rgba & 0x0000FF00) >> 8) as u8,
+            a: ((rgba & 0x000000FF)) as u8,
+        }
+    }
+
+    pub const fn rgb_hex(rgb: u32) -> Self {
+        Self {
+            r: ((rgb & 0xFF0000) >> 16) as u8,
+            g: ((rgb & 0x00FF00) >> 8) as u8,
+            b: (rgb & 0x0000FF) as u8,
+            a: 255,
+        }
+    }
 }
 
 impl From<Color<u8>> for wgpu::Color {
@@ -126,6 +144,24 @@ macro_rules! impl_float {
                     r,
                     g,
                     b,
+                    a: 1.0,
+                }
+            }
+
+            pub const fn rgba_hex(rgba: u32) -> Self {
+                Self {
+                    r: ((rgba & 0xFF000000) >> 24) as $type,
+                    g: ((rgba & 0x00FF0000) >> 16) as $type,
+                    b: ((rgba & 0x0000FF00) >> 8) as $type,
+                    a: (rgba & 0x000000FF) as $type,
+                }
+            }
+
+            pub const fn rgb_hex(rgb: u32) -> Self {
+                Self {
+                    r: ((rgb & 0xFF0000) >> 16) as $type,
+                    g: ((rgb & 0x00FF00) >> 8) as $type,
+                    b: (rgb & 0x0000FF) as $type,
                     a: 1.0,
                 }
             }
