@@ -24,9 +24,34 @@ impl Graphic for Grid {
         state: &'d mut dyn RenderState,
         mut draw_config: DrawConfig,
     ) {
-        let origin = Vector2::new(0.0, 0.0);
+        //let origin = Vector2::new(0.0, 0.0);
         draw_config.shader_id = 1;
 
+        let mut vertices = Vec::with_capacity(((self.columns * 2) * (self.rows * 2)) as usize);
+
+        // rows lines
+        (0..=self.rows).for_each(|r| {
+            let y = (r * self.tile_size.height) as f32;
+
+            vertices.extend(&[
+                Vector2::new(0.0, y),
+                Vector2::new((self.columns * self.tile_size.width) as f32, y),
+            ])
+        });
+
+        // columns lines
+        (0..=self.columns).for_each(|c| {
+            let x = (c * self.tile_size.width) as f32;
+
+            vertices.extend(&[
+                Vector2::new(x, 0.0),
+                Vector2::new(x, (self.rows * self.tile_size.height) as f32),
+            ])
+        });
+
+        state.extend(vertices.iter(), draw_config)
+
+        /*
         state.extend(
             vec!(
                 origin,
@@ -40,5 +65,6 @@ impl Graphic for Grid {
             ).iter(),
             draw_config,
         )
+        */
     }
 }
