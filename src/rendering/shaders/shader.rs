@@ -1,11 +1,24 @@
-use std::hash::{
+use std::{hash::{
     Hash,
     Hasher,
-};
+}, fmt::Display};
 
-use super::ShaderStage;
+use super::{ShaderStage, ShaderInfo};
 
-pub type ShaderId = u32;
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ShaderId(u32);
+
+impl ShaderId {
+    pub(super) fn next(&mut self) {
+        self.0 += 1;
+    }
+}
+
+impl Display for ShaderId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#04x}", self.0)
+    }
+}
 
 pub struct Shader {
     id: ShaderId,
@@ -22,8 +35,8 @@ impl Shader {
         }
     }
 
-    pub fn id(&self) -> ShaderId {
-        self.id
+    pub(super) fn id(&self) -> &ShaderId {
+        &self.id
     }
 
     pub fn vertex(&self) -> &ShaderStage {
@@ -38,5 +51,11 @@ impl Shader {
 impl Hash for Shader {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+impl ShaderInfo for Shader {
+    fn id(&self) -> ShaderId {
+        self.id
     }
 }

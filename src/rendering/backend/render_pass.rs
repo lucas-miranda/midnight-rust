@@ -3,7 +3,7 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     rendering::{
-        shaders::builder::ShaderContext,
+        shaders::builder::ShaderPipeline,
         Color,
         DrawConfig,
         RenderState,
@@ -18,7 +18,8 @@ pub struct RenderPass<'a> {
     surface_view: &'a wgpu::TextureView,
     vertex_data: Vec<Vector2<f32>>,
     bind_group: Option<wgpu::BindGroup>,
-    shader_context: &'a ShaderContext,
+    //shader_context: &'a ShaderContext<'a>,
+    shader_pipeline: &'a ShaderPipeline,
     clear_color: Option<Color<f32>>,
 }
 
@@ -29,7 +30,8 @@ impl<'a> RenderPass<'a> {
         surface_view: &'a wgpu::TextureView,
         device: &'a wgpu::Device,
         bind_group: Option<wgpu::BindGroup>,
-        shader_context: &'a ShaderContext,
+        //shader_context: &'a ShaderContext,
+        shader_pipeline: &'a ShaderPipeline,
     ) -> Self {
         Self {
             encoder,
@@ -38,7 +40,8 @@ impl<'a> RenderPass<'a> {
             surface_view,
             vertex_data: Vec::new(),
             bind_group,
-            shader_context,
+            //shader_context,
+            shader_pipeline,
             clear_color: None,
         }
     }
@@ -93,7 +96,7 @@ impl<'a> RenderPass<'a> {
                 depth_stencil_attachment: None,
             });
 
-            pass.set_pipeline(&self.shader_context.pipeline);
+            pass.set_pipeline(self.shader_pipeline);
 
             if let Some(ref bindings) = self.bind_group {
                 pass.set_bind_group(0, bindings, &[]);

@@ -1,5 +1,4 @@
 use crate::rendering::shaders::{
-    builder::PrimitiveTopology,
     ShaderInstance,
     VertexAttribute,
 };
@@ -15,7 +14,6 @@ pub struct ShaderInstanceBuilder<'a, U> {
     vertex: &'a str,
     fragment: &'a str,
     vertex_attributes: Vec<VertexAttribute>,
-    primitive_topology: PrimitiveTopology,
     phantom: std::marker::PhantomData<U>,
 }
 
@@ -25,7 +23,6 @@ impl<'a, U> ShaderInstanceBuilder<'a, U> {
         format: ShaderFormat,
         vertex: &'a str,
         fragment: &'a str,
-        primitive_topology: PrimitiveTopology,
     ) -> Self {
         Self {
             builder,
@@ -33,7 +30,6 @@ impl<'a, U> ShaderInstanceBuilder<'a, U> {
             vertex,
             fragment,
             vertex_attributes: Vec::new(),
-            primitive_topology,
             phantom: Default::default(),
         }
     }
@@ -56,7 +52,6 @@ impl<'a, U> ShaderInstanceBuilder<'a, U> {
             self.vertex,
             self.fragment,
             self.vertex_attributes,
-            self.primitive_topology,
         )
     }
 }

@@ -9,7 +9,7 @@ mod graphic_adapter_init_error;
 pub use graphic_adapter_init_error::GraphicAdapterInitError;
 
 mod draw_config;
-pub use draw_config::DrawConfig;
+pub use draw_config::*;
 
 mod draw_batcher;
 pub use draw_batcher::DrawBatcher;

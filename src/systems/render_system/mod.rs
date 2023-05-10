@@ -1,9 +1,10 @@
+mod default_shader;
+pub use default_shader::*;
+
 use std::{
     rc::{Rc, Weak},
     cell::RefCell
 };
-
-use bytemuck::{Pod, Zeroable};
 
 use crate::{
     components::{
@@ -22,15 +23,8 @@ use crate::{
     math::Matrix4x4,
     rendering::{
         shaders::{
-            builder::{
-                PrimitiveTopology,
-                ShaderFormat,
-            },
+            builder::ShaderFormat,
             AttributeFormat,
-            Shader,
-            ShaderId,
-            ShaderInstance,
-            ShaderUniformInstance,
             VertexAttribute,
         },
         Color,
@@ -41,129 +35,20 @@ use crate::{
     vertex_attrs,
 };
 
-//
-
-#[repr(C)]
-#[derive(Copy, Clone, Default, Pod, Zeroable)]
-struct MyUniforms {
-    pub view: Matrix4x4<f32>,
-    pub color: Color<f32>,
-}
-
-struct MyShader {
-    shader: Shader,
-    uniforms: Vec<MyUniforms>,
-}
-
-impl MyShader {
-}
-
-impl ShaderInstance for MyShader {
-    fn new(shader: Shader) -> Self {
-        Self {
-            shader,
-            uniforms: vec![MyUniforms::default()],
-        }
-    }
-
-    fn id(&self) -> ShaderId {
-        self.shader.id()
-    }
-
-    fn uniforms_as_slice<'s>(&'s self) -> &'s [u8] {
-        bytemuck::cast_slice(self.uniforms.as_slice())
-    }
-}
-
-impl ShaderUniformInstance for MyShader {
-    type Uniforms = MyUniforms;
-
-    fn uniforms(&self) -> &Self::Uniforms {
-        self.uniforms.get(0).unwrap()
-    }
-}
-
-impl AsRef<dyn ShaderInstance> for MyShader {
-    fn as_ref(&self) -> &(dyn ShaderInstance + 'static) {
-        self
-    }
-}
-
-//
-
-struct MyShader2 {
-    shader: Shader,
-    uniforms: Vec<MyUniforms>,
-}
-
-impl MyShader2 {
-}
-
-impl ShaderInstance for MyShader2 {
-    fn new(shader: Shader) -> Self {
-        Self {
-            shader,
-            uniforms: vec![MyUniforms::default()],
-        }
-    }
-
-    fn id(&self) -> ShaderId {
-        self.shader.id()
-    }
-
-    fn uniforms_as_slice<'s>(&'s self) -> &'s [u8] {
-        bytemuck::cast_slice(self.uniforms.as_slice())
-    }
-}
-
-impl ShaderUniformInstance for MyShader2 {
-    type Uniforms = MyUniforms;
-
-    fn uniforms(&self) -> &Self::Uniforms {
-        self.uniforms.get(0).unwrap()
-    }
-}
-
-impl AsRef<dyn ShaderInstance> for MyShader2 {
-    fn as_ref(&self) -> &(dyn ShaderInstance + 'static) {
-        self
-    }
-}
-
-//
-
-//
-
 pub struct RenderSystem {
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
-    shader: MyShader,
-    shader2: MyShader2,
+    default_shader: MyShader,
 }
 
 impl RenderSystem {
     pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
-        let shader = graphic_adapter
+        let default_shader = graphic_adapter
             .borrow_mut()
             .shader_builder()
             .create::<MyUniforms>(
                 ShaderFormat::GLSL,
                 include_str!("shaders/p1.vert"),
                 include_str!("shaders/p1.frag"),
-                PrimitiveTopology::TriangleList,
-            )
-            .set_vertex_attributes(vertex_attrs![
-                Float32x2,
-            ].into_iter())
-            .build();
-
-        let shader2 = graphic_adapter
-            .borrow_mut()
-            .shader_builder()
-            .create::<MyUniforms>(
-                ShaderFormat::GLSL,
-                include_str!("shaders/p1.vert"),
-                include_str!("shaders/p1.frag"),
-                PrimitiveTopology::LineList,
             )
             .set_vertex_attributes(vertex_attrs![
                 Float32x2,
@@ -172,8 +57,7 @@ impl RenderSystem {
 
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),
-            shader,
-            shader2,
+            default_shader,
         }
     }
 }
@@ -202,15 +86,9 @@ impl System for RenderSystem {
 
 
         {
-            let mut uniforms = self.shader.uniforms.get_mut(0).unwrap();
+            let mut uniforms = self.default_shader.uniforms_mut();
             uniforms.view = Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0);
-            uniforms.color = Color::<f32>::rgba_hex(0x0000FFFF);
-        }
-
-        {
-            let mut uniforms = self.shader2.uniforms.get_mut(0).unwrap();
-            uniforms.view = Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0);
-            uniforms.color = Color::<f32>::rgba_hex(0xFFFF00FF);
+            uniforms.color = Color::<f32>::rgb_hex(0x0000FF);
         }
 
         let mut adapter = graphic_adapter.borrow_mut();
@@ -218,13 +96,12 @@ impl System for RenderSystem {
         match adapter.prepare_draw() {
             Ok(mut draw_command) => {
                 // TODO  use default shader to clear screen
-                draw_command.clear(Color::<u8>::rgb_hex(0x46236e), &self.shader)
+                draw_command.clear(Color::<u8>::rgb_hex(0x46236E), &self.default_shader)
                             .unwrap();
 
                 // collects everything indo a batcher
                 let mut draw_batcher = DrawBatcher::default();
-                draw_batcher.register_shader(&self.shader);
-                draw_batcher.register_shader(&self.shader2);
+                draw_batcher.register_shader(&self.default_shader);
 
                 for QueryEntry { component: (a, b), .. } in query.iter_components() {
                     if let Some(graphic_displayer) = a {
@@ -232,7 +109,13 @@ impl System for RenderSystem {
                             if let Some(ref g) = graphic_displayer.graphic {
                                 let draw_config = DrawConfig {
                                     position: transform.position(),
-                                    shader_id: 0,
+                                    shader_config: graphic_displayer
+                                                    .shader_config
+                                                    .or_else(|| { Some(
+                                                        self.default_shader
+                                                            .default_config()
+                                                            .clone()
+                                                    ) } ),
                                 };
 
                                 println!("[RenderSystem] Rendering with {:?}", draw_config);

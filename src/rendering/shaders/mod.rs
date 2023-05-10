@@ -14,14 +14,17 @@ pub use vertex_attribute::VertexAttribute;
 
 pub use wgpu::VertexFormat as AttributeFormat;
 
-pub trait ShaderUniformInstance: ShaderInstance {
+pub trait ShaderUniformInstance : ShaderInstance {
     type Uniforms: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit;
 
     fn uniforms(&self) -> &Self::Uniforms;
 }
 
-pub trait ShaderInstance {
+pub trait ShaderInstance : ShaderInfo {
     fn new(shader: Shader) -> Self where Self: Sized;
-    fn id(&self) -> ShaderId;
     fn uniforms_as_slice<'s>(&'s self) -> &'s [u8];
+}
+
+pub trait ShaderInfo {
+    fn id(&self) -> ShaderId;
 }

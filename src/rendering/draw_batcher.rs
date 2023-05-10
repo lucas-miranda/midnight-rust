@@ -7,13 +7,13 @@ use super::{
         ShaderInstance,
     },
     DrawConfig,
-    RenderState,
+    RenderState, ShaderConfig,
 };
 
 #[derive(Default)]
 pub struct DrawBatcher<'a> {
     //vertex_buffer: Vec<Vector2<f32>>,
-    batches: HashMap<ShaderId, BatchGroup<'a>>,
+    batches: HashMap<ShaderId, ShaderBatch<'a>>,
 }
 
 impl<'a> DrawBatcher<'a> {
@@ -26,64 +26,61 @@ impl<'a> DrawBatcher<'a> {
     pub fn register_shader<S: ShaderInstance>(&mut self, shader: &'a S) {
         self.batches.insert(
             shader.id(),
-            BatchGroup {
-                vertices: Vec::default(),
-                shader_instance: shader,
+            ShaderBatch {
+                instance: shader,
+                groups: Default::default(),
             }
         );
     }
 
     pub fn flush(&mut self, draw_command: &mut DrawCommand) {
-        for (_shader_id, group) in self.batches.drain() {
-            let mut pass = draw_command.begin(group.shader_instance, None);
-            pass.extend(group.vertices.iter(), DrawConfig::EMPTY);
-            pass.submit().unwrap();
+        println!("-> Flushing...");
+        for (shader_id, batch) in self.batches.drain() {
+            println!("-> With shader id {}", shader_id);
+            for (config, group) in batch.groups {
+                println!("-> Group");
+                let mut pass = draw_command.begin(batch.instance, &config, None);
+                println!("Vertex count: {}", group.vertices.len());
+                pass.extend(group.vertices.iter(), DrawConfig::EMPTY);
+                pass.submit().unwrap();
+            }
         }
     }
 }
 
 impl<'a> RenderState for DrawBatcher<'a> {
     fn extend(&mut self, vertices: Iter<Vector2<f32>>, config: DrawConfig) {
-        /*
-        self.vertex_buffer.extend(
-            vertices.map(|v| *v + draw_config.position)
-        );
-        */
+        let shader_config = config.shader_config
+                                  .expect("Expecting shader config to be defined at this point.");
 
-        /*
-        if !self.batches.contains_key(&config.shader_id) {
-            self.batches.insert(config.shader_id, BatchGroup::default());
-        }
-        */
+        let shader_id = shader_config.shader_id();
 
-        if !self.batches.contains_key(&config.shader_id) {
-            panic!("Shader with id {} isn't registered.", config.shader_id);
+        if !self.batches.contains_key(shader_id) {
+            panic!("Shader with id {} isn't registered.", shader_id);
         }
 
-        let batch_group = self.batches.get_mut(&config.shader_id).unwrap();
+        let shader_batch = self.batches.get_mut(shader_id).unwrap();
+
+        let batch_group = match shader_batch.groups.get_mut(&shader_config) {
+            Some(group) => group,
+            None => {
+                shader_batch.groups.insert(shader_config, Default::default());
+                shader_batch.groups.get_mut(&shader_config).unwrap()
+            },
+        };
 
         batch_group.vertices.extend(vertices.map(
             |v| *v + config.position
         ));
-
-        /*
-        batch_group.entries.push(
-            BatchEntry {
-                vertices: vertices.map(|v| *v + config.position).collect(),
-                config,
-            }
-        );
-        */
     }
 }
 
-struct BatchEntry {
-    pub vertices: Vec<Vector2<f32>>,
-    pub config: DrawConfig,
+struct ShaderBatch<'a> {
+    pub instance: &'a dyn ShaderInstance,
+    pub groups: HashMap<ShaderConfig, BatchGroup>,
 }
 
-struct BatchGroup<'a> {
+#[derive(Default)]
+struct BatchGroup {
     pub vertices: Vec<Vector2<f32>>,
-    //pub entries: Vec<BatchEntry>,
-    pub shader_instance: &'a dyn ShaderInstance,
 }

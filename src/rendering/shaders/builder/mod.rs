@@ -1,4 +1,7 @@
-use std::{collections::HashMap, iter, rc::Weak};
+use std::{
+    collections::HashMap,
+    rc::Weak,
+};
 
 mod backends;
 use backends::{
@@ -20,7 +23,7 @@ use crate::rendering::shaders::{
 use super::{ShaderId, ShaderInstance};
 
 mod shader_context;
-pub(crate) use shader_context::ShaderContext;
+pub(crate) use shader_context::*;
 
 pub type ShaderGLSLProcessor = <backend::Backend as ShaderBuilderBackend>::GLSL;
 
@@ -57,18 +60,21 @@ impl ShaderBuilder {
         self.contexts.get(shader_id)
     }
 
-    pub fn create<'a, U>(
-        &'a mut self,
+    pub fn get_mut_context(&mut self, shader_id: &ShaderId) -> Option<&mut ShaderContext> {
+        self.contexts.get_mut(shader_id)
+    }
+
+    pub fn create<'b, U>(
+        &'b mut self,
         format: ShaderFormat,
-        vertex: &'a str,
-        fragment: &'a str,
-        primitive_topology: PrimitiveTopology,
-    ) -> ShaderInstanceBuilder<'a, U> {
-        ShaderInstanceBuilder::new(self, format, vertex, fragment, primitive_topology)
+        vertex: &'b str,
+        fragment: &'b str,
+    ) -> ShaderInstanceBuilder<'b, U> {
+        ShaderInstanceBuilder::new(self, format, vertex, fragment)
     }
 
     pub fn destroy(&mut self, shader: Shader) {
-        self.contexts.remove(&shader.id());
+        self.contexts.remove(shader.id());
     }
 
     fn glsl(&self) -> &ShaderGLSLProcessor {
@@ -77,7 +83,7 @@ impl ShaderBuilder {
 
     fn next_shader_id(&mut self) -> ShaderId {
         let id = self.next_shader_id;
-        self.next_shader_id += 1;
+        self.next_shader_id.next();
         id
     }
 
@@ -87,7 +93,6 @@ impl ShaderBuilder {
         vertex: &str,
         fragment: &str,
         vertex_attributes: Vec<VertexAttribute>,
-        primitive_topology: PrimitiveTopology,
     ) -> S {
         let id = self.next_shader_id();
 
@@ -103,20 +108,12 @@ impl ShaderBuilder {
         let device = self.device.upgrade().unwrap();
 
         self.contexts.insert(
-            shader.id(),
+            *shader.id(),
             ShaderContext::new::<_, U>(
                 &shader,
                 device,
                 self.surface_format,
-                iter::once(vertex_attributes)
-                    .map(|attrs| attrs
-                        .into_iter()
-                        .map(wgpu::VertexAttribute::from)
-                        .collect::<Vec<wgpu::VertexAttribute>>()
-                    )
-                    .collect::<Vec<Vec<_>>>()
-                    .as_slice(),
-                primitive_topology,
+                vertex_attributes,
             )
         );
 

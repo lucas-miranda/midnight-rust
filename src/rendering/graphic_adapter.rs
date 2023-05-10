@@ -48,7 +48,7 @@ impl GraphicAdapter {
             &self.backend.device,
             &self.backend.queue,
             &mut self.backend.presentation_surface,
-            &self.backend.shader_builder,
+            &mut self.backend.shader_builder,
         )
     }
 }

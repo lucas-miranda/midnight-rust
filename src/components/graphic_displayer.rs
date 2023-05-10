@@ -6,14 +6,14 @@ use crate::{
     },
     rendering::{
         graphics::Graphic,
-        shaders::ShaderId,
+        ShaderConfig,
     },
 };
 
 #[derive(Default)]
 pub struct GraphicDisplayer {
     pub graphic: Option<Box<dyn Graphic>>,
-    pub shader_id: Option<ShaderId>,
+    pub shader_config: Option<ShaderConfig>,
 }
 
 impl Component for GraphicDisplayer {

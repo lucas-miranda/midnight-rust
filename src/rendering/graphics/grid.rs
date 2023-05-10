@@ -1,3 +1,5 @@
+use wgpu::PrimitiveTopology;
+
 use crate::{
     math::Vector2,
     util::Size,
@@ -22,10 +24,11 @@ impl Graphic for Grid {
     fn draw<'d>(
         &'d self,
         state: &'d mut dyn RenderState,
-        mut draw_config: DrawConfig,
+        draw_config: DrawConfig,
     ) {
         //let origin = Vector2::new(0.0, 0.0);
-        draw_config.shader_id = 1;
+        //let mut shader_config = draw_config.shader_config.unwrap();
+        //shader_config.primitive_state().topology = PrimitiveTopology::LineList;
 
         let mut vertices = Vec::with_capacity(((self.columns * 2) * (self.rows * 2)) as usize);
 

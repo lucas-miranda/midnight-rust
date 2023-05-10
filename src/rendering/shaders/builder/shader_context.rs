@@ -1,13 +1,26 @@
-use std::mem;
+use std::{
+    collections::HashMap,
+    iter,
+    mem,
+    ops::Deref,
+};
 
-use crate::rendering::shaders::Shader;
+use crate::rendering::{
+    shaders::{
+        Shader,
+        VertexAttribute,
+    },
+    ShaderConfig
+};
 
 pub struct ShaderContext {
     pub vertex_module: wgpu::ShaderModule,
     pub fragment_module: wgpu::ShaderModule,
-    pub pipeline_layout: wgpu::PipelineLayout,
-    pub pipeline: wgpu::RenderPipeline,
     pub bind_group_layout: wgpu::BindGroupLayout,
+    pipeline_layout: wgpu::PipelineLayout,
+    pipeline: HashMap<ShaderConfig, ShaderPipeline>,
+    surface_format: wgpu::TextureFormat,
+    vertex_attributes: Vec<Vec<wgpu::VertexAttribute>>,
 }
 
 impl ShaderContext {
@@ -15,11 +28,20 @@ impl ShaderContext {
         shader: &Shader,
         device: D,
         surface_format: wgpu::TextureFormat,
-        vertex_buffers: &[Vec<wgpu::VertexAttribute>],
-        primitive_topology: super::PrimitiveTopology,
+        vertex_attributes: Vec<VertexAttribute>,
     ) -> Self where
         D: AsRef<wgpu::Device>
     {
+        let vertex_attributes = iter::once(&vertex_attributes)
+            .map(|attrs| attrs
+                .into_iter()
+                .map(wgpu::VertexAttribute::from)
+                .collect::<Vec<wgpu::VertexAttribute>>()
+            )
+            .collect::<Vec<Vec<_>>>();
+
+        //
+
         let vertex_module = device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("shader label"),
             source: shader.vertex().data().into(),
@@ -29,20 +51,6 @@ impl ShaderContext {
             label: Some("shader label"),
             source: shader.fragment().data().into(),
         });
-
-        // -> Prepare vertex buffers
-
-        // map our VertexAttribute -> wgpu_hal::VertexBufferLayout
-        let vertex_buffers = vertex_buffers
-                .iter()
-                .map(|attributes| wgpu::VertexBufferLayout {
-                    array_stride: attributes
-                        .iter()
-                        .fold(0u64, |s, attr| s + attr.format.size()),
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes,
-                })
-                .collect::<Vec<wgpu::VertexBufferLayout>>();
 
         // -> Create pipeline layout
 
@@ -69,44 +77,89 @@ impl ShaderContext {
             device.as_ref().create_bind_group_layout(&bind_group_layout_desc)
         };
 
-        //
-
-        let pipeline_layout = device.as_ref()
+        let pipeline_layout = device
+            .as_ref()
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
                 bind_group_layouts: &[&bind_group_layout],
                 push_constant_ranges: &[],
-            });
-
-        // -> Create pipeline
-        let pipeline = device.as_ref().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &vertex_module,
-                entry_point: "main",
-                buffers: &vertex_buffers,
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &fragment_module,
-                entry_point: "main",
-                targets: &[Some(surface_format.into())]
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: primitive_topology,
-                ..wgpu::PrimitiveState::default()
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
         });
 
         Self {
             vertex_module,
             fragment_module,
             pipeline_layout,
-            pipeline,
+            pipeline: Default::default(),
             bind_group_layout,
+            surface_format,
+            vertex_attributes,
         }
+    }
+
+    pub(in crate::rendering) fn pipeline<'p>(
+        &'p mut self,
+        device: &wgpu::Device,
+        config: &ShaderConfig
+    ) -> &'p ShaderPipeline {
+        match self.pipeline.contains_key(config) {
+            true => {
+                println!("Using pipeline...");
+                self.pipeline.get(config).unwrap()
+            },
+            false => {
+                println!("Creating pipeline...");
+
+                let buffers: Vec<_> = self.vertex_attributes
+                    .iter()
+                    .map(|attributes| wgpu::VertexBufferLayout {
+                        array_stride: attributes
+                            .iter()
+                            .fold(0u64, |s, attr| s + attr.format.size()),
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes,
+                    })
+                    .collect::<Vec<wgpu::VertexBufferLayout>>();
+
+                let handle = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: None,
+                    layout: Some(&self.pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &self.vertex_module,
+                        entry_point: "main",
+                        buffers: &buffers,
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &self.fragment_module,
+                        entry_point: "main",
+                        targets: &[Some(self.surface_format.into())]
+                    }),
+                    primitive: *config.primitive_state(),
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview: None,
+                });
+
+                self.pipeline.insert(
+                    *config,
+                    ShaderPipeline {
+                        handle,
+                    }
+                );
+
+                self.pipeline.get(config).unwrap()
+            },
+        }
+    }
+}
+
+pub struct ShaderPipeline {
+    pub handle: wgpu::RenderPipeline,
+}
+
+impl Deref for ShaderPipeline {
+    type Target = wgpu::RenderPipeline;
+
+    fn deref(&self) -> &Self::Target {
+        &self.handle
     }
 }

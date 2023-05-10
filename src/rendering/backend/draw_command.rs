@@ -7,7 +7,7 @@ use crate::rendering::{
         ShaderInstance,
     },
     Color,
-    DrawConfig,
+    ShaderConfig,
 };
 
 use super::{
@@ -20,7 +20,7 @@ pub struct DrawCommand<'a> {
     surface_texture: wgpu::SurfaceTexture,
     surface_view: wgpu::TextureView,
     device: &'a wgpu::Device,
-    shader_builder: &'a ShaderBuilder,
+    shader_builder: &'a mut ShaderBuilder,
 }
 
 impl<'a> DrawCommand<'a> {
@@ -28,7 +28,7 @@ impl<'a> DrawCommand<'a> {
         device: &'a wgpu::Device,
         queue: &'a wgpu::Queue,
         presentation_surface: &'a mut RenderPresentationSurface,
-        shader_builder: &'a ShaderBuilder,
+        shader_builder: &'a mut ShaderBuilder,
     ) -> Result<Self, SurfaceError> {
         device.push_error_scope(wgpu::ErrorFilter::Validation);
         let (surface_texture, surface_view) = presentation_surface.acquire_surface()?;
@@ -42,11 +42,16 @@ impl<'a> DrawCommand<'a> {
         })
     }
 
-    pub fn begin<'p>(&'p mut self, shader: &'p dyn ShaderInstance, label: wgpu::Label) -> RenderPass<'p> {
+    pub fn begin<'p>(
+        &'p mut self,
+        shader: &'p dyn ShaderInstance,
+        config: &ShaderConfig,
+        label: wgpu::Label
+    ) -> RenderPass<'p> {
         //let shader = shader_ref.as_ref();
 
         let shader_context = self.shader_builder
-            .get_context(&shader.id())
+            .get_mut_context(&shader.id())
             .unwrap();
 
         let bind_group = {
@@ -80,7 +85,8 @@ impl<'a> DrawCommand<'a> {
             &self.surface_view,
             &self.device,
             bind_group,
-            shader_context,
+            //shader_context,
+            shader_context.pipeline(self.device, config)
         )
     }
 
@@ -89,7 +95,7 @@ impl<'a> DrawCommand<'a> {
     }
 
     pub fn clear<'p, C: Into<Color<f32>>>(&'p mut self, color: C, shader: &'p dyn ShaderInstance) -> Result<(), super::RenderBackendOperationError> {
-        self.begin(shader, None)
+        self.begin(shader, &ShaderConfig::default(), None)
             .clear_color(color)
             .submit()
     }
