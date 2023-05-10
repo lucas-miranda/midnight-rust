@@ -37,7 +37,7 @@ use crate::{
 
 pub struct RenderSystem {
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
-    default_shader: MyShader,
+    default_shader: DefaultShader,
 }
 
 impl RenderSystem {
@@ -45,7 +45,7 @@ impl RenderSystem {
         let default_shader = graphic_adapter
             .borrow_mut()
             .shader_builder()
-            .create::<MyUniforms>(
+            .create::<DefaultUniforms>(
                 ShaderFormat::GLSL,
                 include_str!("shaders/p1.vert"),
                 include_str!("shaders/p1.frag"),

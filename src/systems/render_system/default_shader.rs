@@ -12,7 +12,6 @@ use crate::{
         },
         Color,
         ShaderConfig,
-        Face,
         FrontFace,
         PolygonMode,
         PrimitiveState,
@@ -22,28 +21,28 @@ use crate::{
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, Pod, Zeroable)]
-pub struct MyUniforms {
+pub struct DefaultUniforms {
     pub view: Matrix4x4<f32>,
     pub color: Color<f32>,
 }
 
-pub struct MyShader {
+pub struct DefaultShader {
     shader: Shader,
-    uniforms: Vec<MyUniforms>,
+    uniforms: Vec<DefaultUniforms>,
     default_config: ShaderConfig,
 }
 
-impl MyShader {
+impl DefaultShader {
     pub fn default_config(&self) -> &ShaderConfig {
         &self.default_config
     }
 
-    pub fn uniforms_mut(&mut self) -> &mut MyUniforms {
+    pub fn uniforms_mut(&mut self) -> &mut DefaultUniforms {
         self.uniforms.get_mut(0).unwrap()
     }
 }
 
-impl ShaderInstance for MyShader {
+impl ShaderInstance for DefaultShader {
     fn new(shader: Shader) -> Self {
         let default_config = ShaderConfig::new(
             &shader,
@@ -60,7 +59,7 @@ impl ShaderInstance for MyShader {
 
         Self {
             shader,
-            uniforms: vec![MyUniforms::default()],
+            uniforms: vec![DefaultUniforms::default()],
             default_config,
         }
     }
@@ -70,21 +69,21 @@ impl ShaderInstance for MyShader {
     }
 }
 
-impl ShaderUniformInstance for MyShader {
-    type Uniforms = MyUniforms;
+impl ShaderUniformInstance for DefaultShader {
+    type Uniforms = DefaultUniforms;
 
     fn uniforms(&self) -> &Self::Uniforms {
         self.uniforms.get(0).unwrap()
     }
 }
 
-impl ShaderInfo for MyShader {
+impl ShaderInfo for DefaultShader {
     fn id(&self) -> ShaderId {
         self.shader.id()
     }
 }
 
-impl AsRef<dyn ShaderInstance> for MyShader {
+impl AsRef<dyn ShaderInstance> for DefaultShader {
     fn as_ref(&self) -> &(dyn ShaderInstance + 'static) {
         self
     }
