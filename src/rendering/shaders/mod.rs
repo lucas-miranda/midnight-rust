@@ -1,9 +1,12 @@
 pub(crate) mod builder;
+pub use builder::ShaderFormat;
 
 #[macro_use]
 mod macros;
 
 mod shader_stage;
+use std::ops::Deref;
+
 pub use shader_stage::*;
 
 mod shader;

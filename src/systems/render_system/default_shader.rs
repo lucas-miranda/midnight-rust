@@ -1,15 +1,24 @@
+use std::{
+    rc::{Rc, Weak},
+    cell::RefCell
+};
+
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
     math::Matrix4x4,
     rendering::{
         shaders::{
+            AttributeFormat,
             Shader,
             ShaderId,
             ShaderInfo,
             ShaderInstance,
             ShaderUniformInstance,
+            ShaderFormat,
+            VertexAttribute,
         },
+        GraphicAdapter,
         Color,
         ShaderConfig,
         FrontFace,
@@ -17,6 +26,7 @@ use crate::{
         PrimitiveState,
         PrimitiveTopology,
     },
+    vertex_attrs,
 };
 
 #[repr(C)]
@@ -33,6 +43,21 @@ pub struct DefaultShader {
 }
 
 impl DefaultShader {
+    pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
+        graphic_adapter
+            .borrow_mut()
+            .shader_builder()
+            .create::<DefaultUniforms>(
+                ShaderFormat::GLSL,
+                include_str!("shaders/p1.vert"),
+                include_str!("shaders/p1.frag"),
+            )
+            .set_vertex_attributes(vertex_attrs![
+                Float32x2,
+            ].into_iter())
+            .build()
+    }
+
     pub fn default_config(&self) -> &ShaderConfig {
         &self.default_config
     }

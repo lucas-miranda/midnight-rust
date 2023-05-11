@@ -15,10 +15,10 @@ pub use instance_builder::ShaderInstanceBuilder;
 
 pub use wgpu::PrimitiveTopology;
 
-use crate::rendering::shaders::{
+use crate::{rendering::shaders::{
     Shader,
     VertexAttribute,
-};
+}, resources::ShaderResources};
 
 use super::{ShaderId, ShaderInstance};
 
@@ -40,6 +40,7 @@ pub struct ShaderBuilder {
     next_shader_id: ShaderId,
     backend: backend::Backend,
     contexts: HashMap<ShaderId, ShaderContext>,
+    resources: ShaderResources,
 }
 
 impl ShaderBuilder {
@@ -53,6 +54,7 @@ impl ShaderBuilder {
             next_shader_id: ShaderId::default(),
             backend: backend::Backend::default(),
             contexts: HashMap::new(),
+            resources: Default::default(),
         }
     }
 
@@ -62,6 +64,10 @@ impl ShaderBuilder {
 
     pub fn get_mut_context(&mut self, shader_id: &ShaderId) -> Option<&mut ShaderContext> {
         self.contexts.get_mut(shader_id)
+    }
+
+    pub fn resources(&self) -> &ShaderResources {
+        &self.resources
     }
 
     pub fn create<'b, U>(
@@ -116,6 +122,8 @@ impl ShaderBuilder {
                 vertex_attributes,
             )
         );
+
+        self.resources.insert(*shader.id());
 
         S::new(shader)
     }

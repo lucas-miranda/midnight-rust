@@ -5,6 +5,8 @@ use std::{hash::{
 
 use super::{ShaderStage, ShaderInfo};
 
+// TODO  change visibility to crate only
+//       an user should not mess with shader id
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ShaderId(u32);
 
@@ -57,5 +59,11 @@ impl Hash for Shader {
 impl ShaderInfo for Shader {
     fn id(&self) -> ShaderId {
         self.id
+    }
+}
+
+impl AsRef<dyn ShaderInfo + 'static> for Shader {
+    fn as_ref(&self) -> &(dyn ShaderInfo + 'static) {
+        self
     }
 }
