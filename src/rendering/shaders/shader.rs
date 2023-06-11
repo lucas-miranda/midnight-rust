@@ -1,9 +1,9 @@
-use std::{hash::{
-    Hash,
-    Hasher,
-}, fmt::Display};
+use std::{
+    hash::{ Hash, Hasher },
+    fmt::Display
+};
 
-use super::{ShaderStage, ShaderInfo};
+use super::ShaderInfo;
 
 // TODO  change visibility to crate only
 //       an user should not mess with shader id
@@ -18,35 +18,23 @@ impl ShaderId {
 
 impl Display for ShaderId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#04x}", self.0)
+        write!(f, "{:#x}", self.0)
     }
 }
 
 pub struct Shader {
     id: ShaderId,
-    vertex: ShaderStage,
-    fragment: ShaderStage,
 }
 
 impl Shader {
-    pub(super) fn new(id: ShaderId, vertex: ShaderStage, fragment: ShaderStage) -> Self {
+    pub(super) fn new(id: ShaderId) -> Self {
         Self {
             id,
-            vertex,
-            fragment,
         }
     }
 
     pub(super) fn id(&self) -> &ShaderId {
         &self.id
-    }
-
-    pub fn vertex(&self) -> &ShaderStage {
-        &self.vertex
-    }
-
-    pub fn fragment(&self) -> &ShaderStage {
-        &self.fragment
     }
 }
 

@@ -1,5 +1,5 @@
 use std::{
-    rc::{Rc, Weak},
+    rc::Rc,
     cell::RefCell
 };
 
@@ -10,12 +10,16 @@ use crate::{
     rendering::{
         shaders::{
             AttributeFormat,
+            Bindings,
+            BindingsDescriptorEntry,
             Shader,
+            ShaderDescriptor,
+            ShaderFormat,
             ShaderId,
             ShaderInfo,
             ShaderInstance,
+            ShaderStageKind,
             ShaderUniformInstance,
-            ShaderFormat,
             VertexAttribute,
         },
         GraphicAdapter,
@@ -43,17 +47,20 @@ pub struct DefaultShader {
 }
 
 impl DefaultShader {
-    pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
+    pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Rc<RefCell<Self>> {
         graphic_adapter
             .borrow_mut()
             .shader_builder()
             .create::<DefaultUniforms>(
-                ShaderFormat::GLSL,
-                include_str!("shaders/p1.vert"),
-                include_str!("shaders/p1.frag"),
+                ShaderDescriptor::default()
+                    .with_stage(ShaderStageKind::Vertex,    ShaderFormat::GLSL, include_str!("shaders/p1.vert"))
+                    .with_stage(ShaderStageKind::Fragment,  ShaderFormat::GLSL, include_str!("shaders/p1.frag"))
             )
             .set_vertex_attributes(vertex_attrs![
                 Float32x2,
+            ].into_iter())
+            .bindings(vec![
+                BindingsDescriptorEntry::Uniform(std::marker::PhantomData),
             ].into_iter())
             .build()
     }
@@ -91,6 +98,12 @@ impl ShaderInstance for DefaultShader {
 
     fn uniforms_as_slice<'s>(&'s self) -> &'s [u8] {
         bytemuck::cast_slice(self.uniforms.as_slice())
+    }
+
+    fn bindings<'b>(&'b self, mut bindings: Bindings<'b>) -> Bindings<'b> {
+        bindings.push_uniforms(&self.uniforms);
+
+        bindings
     }
 }
 

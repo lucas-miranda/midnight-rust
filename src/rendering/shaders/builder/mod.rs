@@ -1,8 +1,3 @@
-use std::{
-    collections::HashMap,
-    rc::Weak,
-};
-
 mod backends;
 use backends::{
     backend,
@@ -13,17 +8,31 @@ use backends::{
 mod instance_builder;
 pub use instance_builder::ShaderInstanceBuilder;
 
-pub use wgpu::PrimitiveTopology;
-
-use crate::{rendering::shaders::{
-    Shader,
-    VertexAttribute,
-}, resources::ShaderResources};
-
-use super::{ShaderId, ShaderInstance};
-
 mod shader_context;
 pub(crate) use shader_context::*;
+
+mod processor;
+pub(in crate::rendering::shaders) use processor::ShaderProcessor;
+
+pub use wgpu::PrimitiveTopology;
+
+use std::{
+    collections::HashMap,
+    rc::{ Rc, Weak },
+    cell::RefCell,
+};
+
+use crate::{
+    rendering::shaders::{
+        BindingsDescriptorEntry,
+        Shader,
+        ShaderDescriptor,
+        VertexAttribute,
+    },
+    resources::ShaderResources,
+};
+
+use super::{ShaderId, ShaderInstance};
 
 pub type ShaderGLSLProcessor = <backend::Backend as ShaderBuilderBackend>::GLSL;
 
@@ -32,6 +41,7 @@ pub type ShaderGLSLProcessor = <backend::Backend as ShaderBuilderBackend>::GLSL;
 pub enum ShaderFormat {
     GLSL,
     HLSL,
+    WGSL,
 }
 
 pub struct ShaderBuilder {
@@ -40,6 +50,7 @@ pub struct ShaderBuilder {
     next_shader_id: ShaderId,
     backend: backend::Backend,
     contexts: HashMap<ShaderId, ShaderContext>,
+    instances: HashMap<ShaderId, Weak<RefCell<dyn ShaderInstance>>>,
     resources: ShaderResources,
 }
 
@@ -54,6 +65,7 @@ impl ShaderBuilder {
             next_shader_id: ShaderId::default(),
             backend: backend::Backend::default(),
             contexts: HashMap::new(),
+            instances: HashMap::new(),
             resources: Default::default(),
         }
     }
@@ -70,13 +82,15 @@ impl ShaderBuilder {
         &self.resources
     }
 
+    pub fn instances(&self) -> &HashMap<ShaderId, Weak<RefCell<dyn ShaderInstance>>> {
+        &self.instances
+    }
+
     pub fn create<'b, U>(
         &'b mut self,
-        format: ShaderFormat,
-        vertex: &'b str,
-        fragment: &'b str,
+        descriptor: ShaderDescriptor<'b>,
     ) -> ShaderInstanceBuilder<'b, U> {
-        ShaderInstanceBuilder::new(self, format, vertex, fragment)
+        ShaderInstanceBuilder::new(self, descriptor)
     }
 
     pub fn destroy(&mut self, shader: Shader) {
@@ -93,39 +107,39 @@ impl ShaderBuilder {
         id
     }
 
-    fn build<U, S: ShaderInstance>(
+    fn build<U, S: ShaderInstance + 'static>(
         &mut self,
-        format: ShaderFormat,
-        vertex: &str,
-        fragment: &str,
+        descriptor: ShaderDescriptor,
         vertex_attributes: Vec<VertexAttribute>,
-    ) -> S {
+        bindings: Vec<BindingsDescriptorEntry<U>>,
+    ) -> Rc<RefCell<S>> {
         let id = self.next_shader_id();
-
-        let shader = match format {
-            ShaderFormat::GLSL => {
-                self.glsl().build(id, vertex, fragment)
-            },
-            ShaderFormat::HLSL => {
-                unimplemented!();
-            },
-        };
-
         let device = self.device.upgrade().unwrap();
 
         self.contexts.insert(
-            *shader.id(),
+            id,
             ShaderContext::new::<_, U>(
-                &shader,
+                ShaderProcessor::new(Some(&self.backend)),
+                &descriptor,
                 device,
                 self.surface_format,
                 vertex_attributes,
+                bindings,
             )
         );
 
-        self.resources.insert(*shader.id());
+        self.resources.insert(id);
 
-        S::new(shader)
+        let instance = {
+            let shader = Shader::new(id);
+            let instance = Rc::new(RefCell::new(S::new(shader)));
+            let weak = Rc::downgrade(&instance);
+            self.instances.insert(id, weak);
+
+            instance
+        };
+
+        instance
     }
 }
 

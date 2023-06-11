@@ -1,28 +1,54 @@
-use std::{slice::Iter, collections::HashMap};
-use crate::math::Vector2;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    slice::Iter,
+    rc::Rc,
+};
+
 use super::{
     backend::DrawCommand,
     shaders::{
         ShaderId,
         ShaderInstance,
     },
+    texture::TextureId,
     DrawConfig,
-    RenderState, ShaderConfig,
+    RenderState,
+    ShaderConfig,
+    Texture,
+    TextureView,
+    Vertex,
 };
 
-#[derive(Default)]
-pub struct DrawBatcher<'a> {
-    //vertex_buffer: Vec<Vector2<f32>>,
-    batches: HashMap<ShaderId, ShaderBatch<'a>>,
+pub struct DrawBatcher<'a, 'r, V: Vertex> {
+    batches: HashMap<ShaderId, ShaderBatch<'a, V>>,
+    draw_command: &'a mut DrawCommand<'r>,
 }
 
-impl<'a> DrawBatcher<'a> {
-    /*
-    pub fn drain(&mut self) -> impl Iterator<Item = Vector2<f32>> + '_ {
-        self.vertex_buffer.drain(..)
-    }
-    */
+impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
+    pub fn new(draw_command: &'a mut DrawCommand<'r>) -> Self {
+        let mut batches = HashMap::default();
 
+        draw_command.shader_builder()
+            .instances()
+            .iter()
+            .for_each(|(id, weak_ref)| {
+                batches.insert(
+                    *id,
+                    ShaderBatch {
+                        instance: weak_ref.upgrade().expect(format!("Shader (id {}) was dropped", id).as_str()),
+                        groups: Default::default(),
+                    }
+                );
+            });
+
+        Self {
+            batches,
+            draw_command,
+        }
+    }
+
+    /*
     pub fn register_shader<S: ShaderInstance>(&mut self, shader: &'a S) {
         self.batches.insert(
             shader.id(),
@@ -32,28 +58,68 @@ impl<'a> DrawBatcher<'a> {
             }
         );
     }
+    */
 
-    pub fn flush(&mut self, draw_command: &mut DrawCommand) {
+    pub fn flush(mut self) {
         println!("-> Flushing...");
         for (shader_id, batch) in self.batches.drain() {
             println!("-> With shader id {}", shader_id);
-            for (config, group) in batch.groups {
+            for ((texture_id, config), group) in batch.groups {
                 println!("-> Group");
-                let mut pass = draw_command.begin(batch.instance, &config, None);
+                let shader = batch.instance.borrow();
+                let mut pass = self.draw_command.begin(&shader, &config, None);
+
+                {
+                    let bindings = pass.bindings();
+
+                    /*
+                    if let Some(texture_id) = group.texture_id {
+                        println!("-> With texture ({})", texture_id);
+                        bindings.push_texture_view(texture_view);
+                    }
+                    */
+
+                    if let Some(texture_view) = group.texture_view {
+                        println!("-> With texture ({})", texture_view.id);
+                        bindings.push_texture_view(texture_view);
+                    }
+                }
+
                 println!("Vertex count: {}", group.vertices.len());
-                pass.extend(group.vertices.iter(), DrawConfig::EMPTY);
+                pass.extend(
+                    group.vertices.iter(),
+                    None,
+                    DrawConfig {
+                        vertex: V::default(),
+                        shader_config: None,
+                    }
+                );
                 pass.submit().unwrap();
             }
         }
+
+        println!("----------------\n");
     }
 }
 
-impl<'a> RenderState for DrawBatcher<'a> {
-    fn extend(&mut self, vertices: Iter<Vector2<f32>>, config: DrawConfig) {
-        let shader_config = config.shader_config
+impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
+    V: Vertex,
+{
+    fn extend<'t>(
+        &mut self,
+        vertices: Iter<V>,
+        texture: Option<&'t Texture>,
+        draw_config: DrawConfig<V>
+    ) {
+        let shader_config = draw_config.shader_config
                                   .expect("Expecting shader config to be defined at this point.");
 
         let shader_id = shader_config.shader_id();
+
+        let texture_id = match texture {
+            Some(t) => t.id(),
+            None => &TextureId::NONE,
+        };
 
         if !self.batches.contains_key(shader_id) {
             panic!("Shader with id {} isn't registered.", shader_id);
@@ -61,26 +127,42 @@ impl<'a> RenderState for DrawBatcher<'a> {
 
         let shader_batch = self.batches.get_mut(shader_id).unwrap();
 
-        let batch_group = match shader_batch.groups.get_mut(&shader_config) {
-            Some(group) => group,
+        let batch_group = match shader_batch.groups.get_mut(&(*texture_id, shader_config)) {
+            Some(group) => {
+                println!("Already exists...");
+                group
+            },
             None => {
-                shader_batch.groups.insert(shader_config, Default::default());
-                shader_batch.groups.get_mut(&shader_config).unwrap()
+                println!("Creating a new one...");
+                shader_batch.groups.insert(
+                    (*texture_id, shader_config),
+                    BatchGroup {
+                        texture_view: texture.map(|t| {
+                            let (device, queue) = self.draw_command.device_queue();
+                            t.view(device, queue)
+                        }),
+                        vertices: Vec::new(),
+                    }
+                );
+
+                shader_batch.groups.get_mut(&(*texture_id, shader_config)).unwrap()
             },
         };
 
         batch_group.vertices.extend(vertices.map(
-            |v| *v + config.position
+            |v| *v + draw_config.vertex
         ));
     }
 }
 
-struct ShaderBatch<'a> {
-    pub instance: &'a dyn ShaderInstance,
-    pub groups: HashMap<ShaderConfig, BatchGroup>,
+struct ShaderBatch<'a, V: Vertex> {
+    pub instance: Rc<RefCell<dyn ShaderInstance>>,
+    pub groups: HashMap<(TextureId, ShaderConfig), BatchGroup<'a, V>>,
 }
 
 #[derive(Default)]
-struct BatchGroup {
-    pub vertices: Vec<Vector2<f32>>,
+struct BatchGroup<'v, V: Vertex> {
+    pub texture_view: Option<TextureView<'v>>,
+    //pub texture_id: Option<TextureId>,
+    pub vertices: Vec<V>,
 }

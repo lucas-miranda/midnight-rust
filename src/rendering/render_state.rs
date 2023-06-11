@@ -1,8 +1,17 @@
 use std::slice::Iter;
+use super::{
+    DrawConfig,
+    Texture,
+    Vertex,
+};
 
-use crate::math::Vector2;
-use super::DrawConfig;
-
-pub trait RenderState {
-    fn extend(&mut self, vertices: Iter<Vector2<f32>>, draw_config: DrawConfig);
+pub trait RenderState<V> where
+    V: Vertex,
+{
+    fn extend<'t>(
+        &mut self,
+        vertices: Iter<V>,
+        texture: Option<&'t Texture>,
+        draw_config: DrawConfig<V>,
+    );
 }

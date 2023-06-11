@@ -9,24 +9,29 @@ pub use wgpu::{
     PrimitiveTopology,
 };
 
-use super::shaders::{
-    ShaderId,
-    ShaderInfo,
+use super::{
+    shaders::{
+        ShaderId,
+        ShaderInfo,
+    },
+    Vertex,
 };
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct DrawConfig {
-    pub position: Vector2<f32>,
+pub struct DrawConfig<V: Vertex> {
+    pub vertex: V,
     pub shader_config: Option<ShaderConfig>,
 }
 
-impl DrawConfig {
+/*
+impl<V: Vertex> DrawConfig<V> {
     pub const EMPTY: Self = DrawConfig {
-        position: Vector2::new(0.0, 0.0),
+        vertex: V::default(),
         shader_config: None,
     };
 }
+*/
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

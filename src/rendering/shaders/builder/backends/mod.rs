@@ -11,8 +11,8 @@ pub mod shaderc_builder;
 pub use shaderc_builder as backend;
 
 use crate::rendering::shaders::{
-    Shader,
-    ShaderId,
+    ShaderStage,
+    ShaderStageKind,
 };
 
 pub trait ShaderBuilderBackend : Default {
@@ -22,5 +22,5 @@ pub trait ShaderBuilderBackend : Default {
 }
 
 pub trait ShaderGLSLBackendProcessor {
-    fn build(&self, id: ShaderId, vertex: &str, fragment: &str) -> Shader;
+    fn build(&self, stage: ShaderStageKind, src: &str) -> ShaderStage;
 }

@@ -7,16 +7,19 @@ use crate::{
     rendering::{
         graphics::Graphic,
         ShaderConfig,
+        Vertex,
     },
 };
 
 #[derive(Default)]
-pub struct GraphicDisplayer {
-    pub graphic: Option<Box<dyn Graphic>>,
+pub struct GraphicDisplayer<V> where
+    V: Vertex
+{
+    pub graphic: Option<Box<dyn Graphic<V>>>,
     pub shader_config: Option<ShaderConfig>,
 }
 
-impl Component for GraphicDisplayer {
+impl<V: Vertex> Component for GraphicDisplayer<V> {
     fn attributes(&self) -> ComponentAttribute {
         ComponentAttribute::None
     }

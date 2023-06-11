@@ -51,4 +51,12 @@ impl GraphicAdapter {
             &mut self.backend.shader_builder,
         )
     }
+
+    pub(super) fn backend(&self) -> &RenderBackend {
+        &self.backend
+    }
+
+    pub(super) fn mut_backend(&mut self) -> &mut RenderBackend {
+        &mut self.backend
+    }
 }

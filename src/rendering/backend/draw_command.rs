@@ -1,13 +1,15 @@
+use std::ops::Deref;
+
 use wgpu::SurfaceError;
-use wgpu::util::DeviceExt;
 
 use crate::rendering::{
     shaders::{
         builder::ShaderBuilder,
+        Bindings,
         ShaderInstance,
     },
     Color,
-    ShaderConfig,
+    ShaderConfig, Vertex,
 };
 
 use super::{
@@ -42,40 +44,28 @@ impl<'a> DrawCommand<'a> {
         })
     }
 
-    pub fn begin<'p>(
+    pub(in crate::rendering) fn device_queue(
+        &self
+    ) -> (&wgpu::Device, &wgpu::Queue) {
+        (&self.device, &self.queue)
+    }
+
+    pub(in crate::rendering) fn shader_builder(&self) -> &ShaderBuilder {
+        self.shader_builder
+    }
+
+    pub fn begin<'p, V, S>(
         &'p mut self,
-        shader: &'p dyn ShaderInstance,
+        shader: &'p S,
         config: &ShaderConfig,
         label: wgpu::Label
-    ) -> RenderPass<'p> {
-        //let shader = shader_ref.as_ref();
-
+    ) -> RenderPass<'p, V> where
+        V: Vertex,
+        S: Deref<Target = dyn ShaderInstance>,
+    {
         let shader_context = self.shader_builder
             .get_mut_context(&shader.id())
             .unwrap();
-
-        let bind_group = {
-            let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("uniforms buffer"),
-                contents: shader.uniforms_as_slice(),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-            let bind_group = Some(
-                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Uniform Bind Group"),
-                    layout: &shader_context.bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: uniform_buffer.as_entire_binding(),
-                        }
-                    ],
-                })
-            );
-
-            bind_group
-        };
 
         RenderPass::new(
             self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -84,8 +74,7 @@ impl<'a> DrawCommand<'a> {
             &self.queue,
             &self.surface_view,
             &self.device,
-            bind_group,
-            //shader_context,
+            shader.bindings(Bindings::new(&self.device)),
             shader_context.pipeline(self.device, config)
         )
     }
@@ -94,8 +83,12 @@ impl<'a> DrawCommand<'a> {
         self.surface_texture.present();
     }
 
-    pub fn clear<'p, C: Into<Color<f32>>>(&'p mut self, color: C, shader: &'p dyn ShaderInstance) -> Result<(), super::RenderBackendOperationError> {
-        self.begin(shader, &ShaderConfig::default(), None)
+    pub fn clear<'p, C, V, S>(&'p mut self, color: C, shader: &'p S) -> Result<(), super::RenderBackendOperationError> where
+        C: Into<Color<f32>>,
+        V: Vertex,
+        S: Deref<Target = dyn ShaderInstance>,
+    {
+        self.begin::<V, _>(shader, &ShaderConfig::default(), None)
             .clear_color(color)
             .submit()
     }

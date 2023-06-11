@@ -7,10 +7,11 @@ edition = "2021"
 #members = ["raven-proc"]
 
 [features]
-default = ["shader-shaderc"]
+default = ["shader-shaderc", "shader-wgsl"]
 
 shader-naga = ["dep:naga"]
 shader-shaderc = ["dep:shaderc"]
+shader-wgsl = ["wgpu/wgsl"]
 
 [dependencies]
 num-traits = "0.2.15"
@@ -22,3 +23,7 @@ shaderc = { version = "0.8.2", optional = true }
 bitflags = "2.0.2"
 raw-window-handle = "0.5.1"
 bytemuck = { version = "1.13.1", features = ["derive"] }
+serde = { version = "1.0.163", features = ["derive"] }
+image = { version = "0.24.6", features = ["png"] }
+async-executor = "1.5.1"
+futures-lite = "1.13.0"

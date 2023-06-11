@@ -1,36 +1,36 @@
-use crate::rendering::shaders::{
-    ShaderInstance,
-    VertexAttribute,
+use std::{
+    cell::RefCell,
+    rc::Rc,
 };
 
-use super::{
-    ShaderBuilder,
-    ShaderFormat,
+use crate::rendering::shaders::{
+    BindingsDescriptorEntry,
+    ShaderInstance,
+    VertexAttribute,
+    ShaderDescriptor,
 };
+
+use super::ShaderBuilder;
 
 pub struct ShaderInstanceBuilder<'a, U> {
     builder: &'a mut ShaderBuilder,
-    format: ShaderFormat,
-    vertex: &'a str,
-    fragment: &'a str,
+    descriptor: ShaderDescriptor<'a>,
     vertex_attributes: Vec<VertexAttribute>,
-    phantom: std::marker::PhantomData<U>,
+    //phantom: std::marker::PhantomData<U>,
+    bindings: Vec<BindingsDescriptorEntry<U>>,
 }
 
 impl<'a, U> ShaderInstanceBuilder<'a, U> {
     pub(super) fn new(
         builder: &'a mut ShaderBuilder,
-        format: ShaderFormat,
-        vertex: &'a str,
-        fragment: &'a str,
+        descriptor: ShaderDescriptor<'a>,
     ) -> Self {
         Self {
             builder,
-            format,
-            vertex,
-            fragment,
+            descriptor,
             vertex_attributes: Vec::new(),
-            phantom: Default::default(),
+            //phantom: Default::default(),
+            bindings: Vec::new(),
         }
     }
 
@@ -46,12 +46,23 @@ impl<'a, U> ShaderInstanceBuilder<'a, U> {
         self
     }
 
-    pub fn build<S: ShaderInstance>(self) -> S {
+    pub fn bindings<I>(mut self, descriptor: I) -> Self where
+        I: Iterator<Item = BindingsDescriptorEntry<U>>
+    {
+        self.bindings.clear();
+
+        for entry in descriptor {
+            self.bindings.push(entry);
+        }
+
+        self
+    }
+
+    pub fn build<S: ShaderInstance + 'static>(self) -> Rc<RefCell<S>> {
         self.builder.build::<U, S>(
-            self.format,
-            self.vertex,
-            self.fragment,
+            self.descriptor,
             self.vertex_attributes,
+            self.bindings,
         )
     }
 }

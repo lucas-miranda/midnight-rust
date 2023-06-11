@@ -3,7 +3,13 @@ use std::fmt::{
     Display,
 };
 
-use crate::math::num_traits::Num;
+use crate::math::num_traits::{
+    Num,
+    cast::{
+        cast,
+        NumCast,
+    },
+};
 
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
@@ -22,6 +28,19 @@ impl<T> Size<T> where
             width,
             height,
         }
+    }
+}
+
+impl<T> Size<T> where
+    T: Num + NumCast
+{
+    pub fn with<U>(x: U, y: U) -> Option<Self> where
+        U: Num + NumCast
+    {
+        Some(Self::new(
+            cast::<U, T>(x)?,
+            cast::<U, T>(y)?,
+        ))
     }
 }
 

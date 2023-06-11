@@ -3,7 +3,7 @@ pub use default_shader::*;
 
 use std::{
     rc::{Rc, Weak},
-    cell::RefCell
+    cell::RefCell, marker::PhantomData
 };
 
 use crate::{
@@ -20,32 +20,38 @@ use crate::{
         system::System,
     },
     input,
-    math::Matrix4x4,
+    math::{
+        Matrix4x4,
+        Vector2,
+    },
     rendering::{
         Color,
         DrawBatcher,
         DrawConfig,
         GraphicAdapter,
+        Vertex, VertexPosition,
     },
 };
 
-pub struct RenderSystem {
+pub struct RenderSystem<V: Vertex> {
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
-    default_shader: DefaultShader,
+    default_shader: Rc<RefCell<DefaultShader>>,
+    phantom: PhantomData<V>,
 }
 
-impl RenderSystem {
+impl<V: Vertex> RenderSystem<V> {
     pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),
             default_shader: DefaultShader::new(&graphic_adapter),
+            phantom: Default::default(),
         }
     }
 }
 
-impl System for RenderSystem {
+impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSystem<V> {
     type Query<'q> = (
-        component::Query<'q, GraphicDisplayer>,
+        component::Query<'q, GraphicDisplayer<V>>,
         component::Query<'q, Transform>,
     );
 
@@ -66,7 +72,8 @@ impl System for RenderSystem {
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
         {
-            let mut uniforms = self.default_shader.uniforms_mut();
+            let mut shader = self.default_shader.borrow_mut();
+            let mut uniforms = shader.uniforms_mut();
             uniforms.view = Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0);
             uniforms.color = Color::<f32>::rgb_hex(0x0000FF);
         }
@@ -76,38 +83,49 @@ impl System for RenderSystem {
         match adapter.prepare_draw() {
             Ok(mut draw_command) => {
                 // TODO  use default shader to clear screen
-                draw_command.clear(Color::<u8>::rgb_hex(0x46236E), &self.default_shader)
-                            .unwrap();
+
+                /*
+                {
+                    let shader: std::cell::Ref<dyn ShaderInstance> = self.default_shader.borrow();
+                    draw_command.clear(Color::<u8>::rgb_hex(0x46236E), &shader)
+                                .unwrap();
+                }
+                */
 
                 // collects everything indo a batcher
-                let mut draw_batcher = DrawBatcher::default();
-                draw_batcher.register_shader(&self.default_shader);
+                {
+                    let mut draw_batcher = DrawBatcher::new(&mut draw_command);
 
-                for QueryEntry { component: (a, b), .. } in query.iter_components() {
-                    if let Some(graphic_displayer) = a {
-                        if let Some(transform) = b {
-                            if let Some(ref g) = graphic_displayer.graphic {
-                                let draw_config = DrawConfig {
-                                    position: transform.position(),
-                                    shader_config: graphic_displayer
-                                                    .shader_config
-                                                    .or_else(|| { Some(
-                                                        self.default_shader
-                                                            .default_config()
-                                                            .clone()
-                                                    ) } ),
-                                };
+                    //draw_batcher.register_shader(&self.default_shader);
 
-                                println!("[RenderSystem] Rendering with {:?}", draw_config);
-                                println!("[RenderSystem] Transform: {:?}", *transform);
+                    for QueryEntry { component: (a, b), .. } in query.iter_components() {
+                        if let Some(graphic_displayer) = a {
+                            if let Some(transform) = b {
+                                if let Some(ref g) = graphic_displayer.graphic {
+                                    let draw_config = DrawConfig {
+                                        vertex: V::from_position(transform.position()),
+                                        shader_config: graphic_displayer
+                                                        .shader_config
+                                                        .or_else(|| { Some(
+                                                            self.default_shader
+                                                                .borrow()
+                                                                .default_config()
+                                                                .clone()
+                                                        ) } ),
+                                    };
 
-                                g.draw(&mut draw_batcher, draw_config)
+                                    //println!("[RenderSystem] Rendering with {:?}", draw_config);
+                                    println!("[RenderSystem] Transform: {:?}", *transform);
+
+                                    g.draw(&mut draw_batcher, draw_config)
+                                }
                             }
                         }
                     }
+
+                    draw_batcher.flush();
                 }
 
-                draw_batcher.flush(&mut draw_command);
                 draw_command.present();
             },
             Err(_e) => return,

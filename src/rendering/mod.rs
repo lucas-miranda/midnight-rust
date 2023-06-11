@@ -1,4 +1,5 @@
 pub mod backend;
+pub mod fonts;
 pub mod graphics;
 pub mod shaders;
 
@@ -19,3 +20,9 @@ pub use color::Color;
 
 mod render_state;
 pub use render_state::RenderState;
+
+mod texture;
+pub use texture::*;
+
+mod vertex;
+pub use vertex::*;

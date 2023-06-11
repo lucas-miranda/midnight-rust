@@ -1,22 +1,25 @@
 use std::{
     collections::HashMap,
-    iter,
-    mem,
     ops::Deref,
 };
 
 use crate::rendering::{
     shaders::{
-        Shader,
+        BindingsDescriptorEntry,
         VertexAttribute,
+        ShaderDescriptor,
+        ShaderStageKind,
     },
-    ShaderConfig
+    ShaderConfig,
 };
+
+use super::ShaderProcessor;
 
 pub struct ShaderContext {
     pub vertex_module: wgpu::ShaderModule,
     pub fragment_module: wgpu::ShaderModule,
     pub bind_group_layout: wgpu::BindGroupLayout,
+    pub reuse_pipeline: bool,
     pipeline_layout: wgpu::PipelineLayout,
     pipeline: HashMap<ShaderConfig, ShaderPipeline>,
     surface_format: wgpu::TextureFormat,
@@ -25,53 +28,53 @@ pub struct ShaderContext {
 
 impl ShaderContext {
     pub(super) fn new<D, U>(
-        shader: &Shader,
+        processor: ShaderProcessor,
+        descriptor: &ShaderDescriptor,
         device: D,
         surface_format: wgpu::TextureFormat,
         vertex_attributes: Vec<VertexAttribute>,
+        bindings: Vec<BindingsDescriptorEntry<U>>,
     ) -> Self where
         D: AsRef<wgpu::Device>
     {
-        let vertex_attributes = iter::once(&vertex_attributes)
-            .map(|attrs| attrs
+        let vertex_attributes = vec![
+            vertex_attributes
                 .into_iter()
                 .map(wgpu::VertexAttribute::from)
-                .collect::<Vec<wgpu::VertexAttribute>>()
-            )
-            .collect::<Vec<Vec<_>>>();
+                .collect(),
+        ];
 
         //
 
-        let vertex_module = device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("shader label"),
-            source: shader.vertex().data().into(),
-        });
+        let vertex_module = match descriptor.process_stage(&ShaderStageKind::Vertex, &processor) {
+            Some(vertex_stage) => device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: None,
+                source: vertex_stage.data().into(),
+            }),
+            None => panic!("Expecting vertex shader stage to be defined."),
+        };
 
-        let fragment_module = device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("shader label"),
-            source: shader.fragment().data().into(),
-        });
+        let fragment_module = match descriptor.process_stage(&ShaderStageKind::Fragment, &processor) {
+            Some(frag_stage) => device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: None,
+                source: frag_stage.data().into(),
+            }),
+            None => panic!("Expecting fragment shader stage to be defined."),
+        };
 
         // -> Create pipeline layout
 
         // bind group layouts
         let bind_group_layout = {
+            let entries: Vec<_> = bindings
+                .iter()
+                .enumerate()
+                .map(|(i, e)| e.layout_entry(i as u32))
+                .collect();
+
             let bind_group_layout_desc = wgpu::BindGroupLayoutDescriptor {
                 label: None,
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(
-                                mem::size_of::<U>() as _,
-                            ),
-                        },
-                        count: None,
-                    }
-                ],
+                entries: entries.as_slice(),
             };
 
             device.as_ref().create_bind_group_layout(&bind_group_layout_desc)
@@ -88,9 +91,10 @@ impl ShaderContext {
         Self {
             vertex_module,
             fragment_module,
+            bind_group_layout,
+            reuse_pipeline: true,
             pipeline_layout,
             pipeline: Default::default(),
-            bind_group_layout,
             surface_format,
             vertex_attributes,
         }
@@ -101,7 +105,7 @@ impl ShaderContext {
         device: &wgpu::Device,
         config: &ShaderConfig
     ) -> &'p ShaderPipeline {
-        match self.pipeline.contains_key(config) {
+        match self.reuse_pipeline && self.pipeline.contains_key(config) {
             true => {
                 println!("Using pipeline...");
                 self.pipeline.get(config).unwrap()
