@@ -24,16 +24,17 @@ pub struct ShaderContext {
     pipeline: HashMap<ShaderConfig, ShaderPipeline>,
     surface_format: wgpu::TextureFormat,
     vertex_attributes: Vec<Vec<wgpu::VertexAttribute>>,
+    //bindings: Vec<BindingsDescriptorEntry<U>>,
 }
 
 impl ShaderContext {
-    pub(super) fn new<D, U>(
+    pub(super) fn new<D>(
         processor: ShaderProcessor,
         descriptor: &ShaderDescriptor,
         device: D,
         surface_format: wgpu::TextureFormat,
         vertex_attributes: Vec<VertexAttribute>,
-        bindings: Vec<BindingsDescriptorEntry<U>>,
+        bindings: Vec<BindingsDescriptorEntry>,
     ) -> Self where
         D: AsRef<wgpu::Device>
     {

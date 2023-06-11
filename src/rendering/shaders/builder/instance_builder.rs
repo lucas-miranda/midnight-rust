@@ -12,15 +12,14 @@ use crate::rendering::shaders::{
 
 use super::ShaderBuilder;
 
-pub struct ShaderInstanceBuilder<'a, U> {
+pub struct ShaderInstanceBuilder<'a> {
     builder: &'a mut ShaderBuilder,
     descriptor: ShaderDescriptor<'a>,
     vertex_attributes: Vec<VertexAttribute>,
-    //phantom: std::marker::PhantomData<U>,
-    bindings: Vec<BindingsDescriptorEntry<U>>,
+    bindings: Vec<BindingsDescriptorEntry>,
 }
 
-impl<'a, U> ShaderInstanceBuilder<'a, U> {
+impl<'a> ShaderInstanceBuilder<'a> {
     pub(super) fn new(
         builder: &'a mut ShaderBuilder,
         descriptor: ShaderDescriptor<'a>,
@@ -47,7 +46,7 @@ impl<'a, U> ShaderInstanceBuilder<'a, U> {
     }
 
     pub fn bindings<I>(mut self, descriptor: I) -> Self where
-        I: Iterator<Item = BindingsDescriptorEntry<U>>
+        I: Iterator<Item = BindingsDescriptorEntry>
     {
         self.bindings.clear();
 
@@ -59,7 +58,7 @@ impl<'a, U> ShaderInstanceBuilder<'a, U> {
     }
 
     pub fn build<S: ShaderInstance + 'static>(self) -> Rc<RefCell<S>> {
-        self.builder.build::<U, S>(
+        self.builder.build::<S>(
             self.descriptor,
             self.vertex_attributes,
             self.bindings,

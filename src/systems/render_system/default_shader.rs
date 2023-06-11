@@ -51,7 +51,7 @@ impl DefaultShader {
         graphic_adapter
             .borrow_mut()
             .shader_builder()
-            .create::<DefaultUniforms>(
+            .create(
                 ShaderDescriptor::default()
                     .with_stage(ShaderStageKind::Vertex,    ShaderFormat::GLSL, include_str!("shaders/p1.vert"))
                     .with_stage(ShaderStageKind::Fragment,  ShaderFormat::GLSL, include_str!("shaders/p1.frag"))
@@ -60,7 +60,7 @@ impl DefaultShader {
                 Float32x2,
             ].into_iter())
             .bindings(vec![
-                BindingsDescriptorEntry::Uniform(std::marker::PhantomData),
+                BindingsDescriptorEntry::uniform::<DefaultUniforms>(),
             ].into_iter())
             .build()
     }

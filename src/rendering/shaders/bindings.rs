@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::rendering::{Texture, TextureView};
+use crate::rendering::TextureView;
 
 pub struct Bindings<'d> {
     device: &'d wgpu::Device,

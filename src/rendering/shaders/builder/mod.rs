@@ -86,10 +86,10 @@ impl ShaderBuilder {
         &self.instances
     }
 
-    pub fn create<'b, U>(
+    pub fn create<'b>(
         &'b mut self,
         descriptor: ShaderDescriptor<'b>,
-    ) -> ShaderInstanceBuilder<'b, U> {
+    ) -> ShaderInstanceBuilder<'b> {
         ShaderInstanceBuilder::new(self, descriptor)
     }
 
@@ -107,18 +107,18 @@ impl ShaderBuilder {
         id
     }
 
-    fn build<U, S: ShaderInstance + 'static>(
+    fn build<S: ShaderInstance + 'static>(
         &mut self,
         descriptor: ShaderDescriptor,
         vertex_attributes: Vec<VertexAttribute>,
-        bindings: Vec<BindingsDescriptorEntry<U>>,
+        bindings: Vec<BindingsDescriptorEntry>,
     ) -> Rc<RefCell<S>> {
         let id = self.next_shader_id();
         let device = self.device.upgrade().unwrap();
 
         self.contexts.insert(
             id,
-            ShaderContext::new::<_, U>(
+            ShaderContext::new::<_>(
                 ShaderProcessor::new(Some(&self.backend)),
                 &descriptor,
                 device,

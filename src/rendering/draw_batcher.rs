@@ -64,7 +64,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
         println!("-> Flushing...");
         for (shader_id, batch) in self.batches.drain() {
             println!("-> With shader id {}", shader_id);
-            for ((texture_id, config), group) in batch.groups {
+            for ((_texture_id, config), group) in batch.groups {
                 println!("-> Group");
                 let shader = batch.instance.borrow();
                 let mut pass = self.draw_command.begin(&shader, &config, None);
