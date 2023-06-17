@@ -101,7 +101,7 @@ impl ShaderInstance for DefaultShader {
     }
 
     fn bindings<'b>(&'b self, mut bindings: Bindings<'b>) -> Bindings<'b> {
-        bindings.push_uniforms(&self.uniforms);
+        bindings.uniforms(&self.uniforms);
 
         bindings
     }

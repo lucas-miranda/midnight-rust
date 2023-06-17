@@ -72,16 +72,9 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
                 {
                     let bindings = pass.bindings();
 
-                    /*
-                    if let Some(texture_id) = group.texture_id {
-                        println!("-> With texture ({})", texture_id);
-                        bindings.push_texture_view(texture_view);
-                    }
-                    */
-
                     if let Some(texture_view) = group.texture_view {
                         println!("-> With texture ({})", texture_view.id);
-                        bindings.push_texture_view(texture_view);
+                        bindings.texture_view(texture_view);
                     }
                 }
 

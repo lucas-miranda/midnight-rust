@@ -1,5 +1,6 @@
 use std::mem;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BindingsDescriptorEntry {
     Uniform { size: u64 },
     Sampler,

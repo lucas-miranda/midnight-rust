@@ -74,7 +74,10 @@ impl<'a> DrawCommand<'a> {
             &self.queue,
             &self.surface_view,
             &self.device,
-            shader.bindings(Bindings::new(&self.device)),
+            shader.bindings(Bindings::new(
+                &self.device,
+                shader_context.bindings_descriptor()
+            )),
             shader_context.pipeline(self.device, config)
         )
     }

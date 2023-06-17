@@ -24,7 +24,7 @@ pub struct ShaderContext {
     pipeline: HashMap<ShaderConfig, ShaderPipeline>,
     surface_format: wgpu::TextureFormat,
     vertex_attributes: Vec<Vec<wgpu::VertexAttribute>>,
-    //bindings: Vec<BindingsDescriptorEntry<U>>,
+    bindings: Vec<BindingsDescriptorEntry>,
 }
 
 impl ShaderContext {
@@ -98,7 +98,12 @@ impl ShaderContext {
             pipeline: Default::default(),
             surface_format,
             vertex_attributes,
+            bindings,
         }
+    }
+
+    pub(in crate::rendering) fn bindings_descriptor(&self) -> Vec<BindingsDescriptorEntry> {
+        self.bindings.clone()
     }
 
     pub(in crate::rendering) fn pipeline<'p>(

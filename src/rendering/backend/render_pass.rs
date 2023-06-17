@@ -1,5 +1,4 @@
 use std::slice::Iter;
-use core::future;
 use wgpu::util::DeviceExt;
 
 use crate::rendering::{
@@ -67,7 +66,7 @@ impl<'a, V: Vertex> RenderPass<'a, V> {
         self.device.push_error_scope(wgpu::ErrorFilter::Validation);
 
         let bind_group = {
-            let bindings = self.bindings.collect();
+            let bindings = self.bindings.collect().unwrap();
 
             let bind_group = Some(
                 self.device.create_bind_group(&wgpu::BindGroupDescriptor {
