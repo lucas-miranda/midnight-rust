@@ -2,35 +2,39 @@ use std::collections::{HashMap, HashSet};
 
 use crate::rendering::shaders::{
     ShaderInfo,
-    ShaderId,
+    Shader,
 };
 
 #[derive(Default)]
 pub struct ShaderResources {
-    identifiers: HashMap<ShaderId, ShaderResource>,
+    identifiers: HashMap<Shader, ShaderResource>,
     registry: HashMap<String, ShaderResource>,
 }
 
 impl ShaderResources {
-    pub(crate) fn insert(&mut self, id: ShaderId) {
-        self.identifiers.insert(id, ShaderResource { id });
+    pub(crate) fn insert(&mut self, shader: Shader) {
+        self.identifiers.insert(shader, ShaderResource { shader });
     }
 
     pub fn register<S: ShaderInfo + 'static>(&mut self, shader: S, name: String) {
-        self.registry.insert(name, ShaderResource { id: shader.id() });
+        self.registry.insert(name, ShaderResource { shader: shader.identifier() });
     }
 
+    /*
     pub fn get_default(&self) -> &ShaderResource {
         self.identifiers.get(&ShaderId::default()).unwrap()
     }
+    */
 }
 
 pub struct ShaderResource {
-    id: ShaderId,
+    shader: Shader,
 }
 
+/*
 impl ShaderInfo for ShaderResource {
     fn id(&self) -> ShaderId {
         self.id
     }
 }
+*/

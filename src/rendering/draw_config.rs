@@ -1,5 +1,3 @@
-use crate::math::Vector2;
-
 pub use wgpu::{
     Face,
     FrontFace,
@@ -11,7 +9,7 @@ pub use wgpu::{
 
 use super::{
     shaders::{
-        ShaderId,
+        Shader,
         ShaderInfo,
     },
     Vertex,
@@ -36,20 +34,20 @@ impl<V: Vertex> DrawConfig<V> {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ShaderConfig {
-    shader_id: ShaderId,
+    shader: Shader,
     primitive: PrimitiveState,
 }
 
 impl ShaderConfig {
     pub fn new<S: ShaderInfo>(shader: &S, primitive: PrimitiveState) -> Self {
         Self {
-            shader_id: shader.id(),
+            shader: shader.identifier(),
             primitive,
         }
     }
 
-    pub(super) fn shader_id(&self) -> &ShaderId {
-        &self.shader_id
+    pub(super) fn shader(&self) -> &Shader {
+        &self.shader
     }
 
     pub fn primitive_state(&self) -> &PrimitiveState {

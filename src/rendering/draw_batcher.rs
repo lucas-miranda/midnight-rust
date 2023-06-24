@@ -8,7 +8,7 @@ use std::{
 use super::{
     backend::DrawCommand,
     shaders::{
-        ShaderId,
+        Shader,
         ShaderInstance,
     },
     texture::TextureId,
@@ -21,7 +21,7 @@ use super::{
 };
 
 pub struct DrawBatcher<'a, 'r, V: Vertex> {
-    batches: HashMap<ShaderId, ShaderBatch<'a, V>>,
+    batches: HashMap<Shader, ShaderBatch<'a, V>>,
     draw_command: &'a mut DrawCommand<'r>,
 }
 
@@ -107,18 +107,18 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
         let shader_config = draw_config.shader_config
                                   .expect("Expecting shader config to be defined at this point.");
 
-        let shader_id = shader_config.shader_id();
+        let shader = shader_config.shader();
 
         let texture_id = match texture {
             Some(t) => t.id(),
             None => &TextureId::NONE,
         };
 
-        if !self.batches.contains_key(shader_id) {
-            panic!("Shader with id {} isn't registered.", shader_id);
+        if !self.batches.contains_key(shader) {
+            panic!("Shader ({}) isn't registered.", shader);
         }
 
-        let shader_batch = self.batches.get_mut(shader_id).unwrap();
+        let shader_batch = self.batches.get_mut(shader).unwrap();
 
         let batch_group = match shader_batch.groups.get_mut(&(*texture_id, shader_config)) {
             Some(group) => {

@@ -15,11 +15,9 @@ use crate::{
             Shader,
             ShaderDescriptor,
             ShaderFormat,
-            ShaderId,
             ShaderInfo,
             ShaderInstance,
             ShaderStageKind,
-            ShaderUniformInstance,
             VertexAttribute,
         },
         GraphicAdapter,
@@ -107,17 +105,9 @@ impl ShaderInstance for DefaultShader {
     }
 }
 
-impl ShaderUniformInstance for DefaultShader {
-    type Uniforms = DefaultUniforms;
-
-    fn uniforms(&self) -> &Self::Uniforms {
-        self.uniforms.get(0).unwrap()
-    }
-}
-
 impl ShaderInfo for DefaultShader {
-    fn id(&self) -> ShaderId {
-        self.shader.id()
+    fn identifier(&self) -> Shader {
+        self.shader
     }
 }
 

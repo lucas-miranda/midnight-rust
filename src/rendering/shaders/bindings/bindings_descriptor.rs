@@ -1,5 +1,6 @@
 use std::mem;
 
+/// Describes a binding entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BindingsDescriptorEntry {
     Uniform { size: u64 },

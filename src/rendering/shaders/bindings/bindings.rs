@@ -2,16 +2,43 @@ use std::mem;
 use wgpu::util::DeviceExt;
 
 use crate::rendering::TextureView;
-use super::BindingsDescriptorEntry;
+use super::{BindingsDescriptorEntry, BindingsError};
 
+/// Bindings which will be applied to shader.
+/// It's created with a descriptor, so it only expects values to be filled at correct places.
+/// Think this as empty slots waiting to be filled.
 pub struct Bindings<'d> {
     device: &'d wgpu::Device,
     entries: Vec<Option<BindingEntry>>,
     descriptor: Vec<BindingsDescriptorEntry>,
 }
 
+// TODO
+// - let user choose which index value is defining, instead always choose first found
+
 impl<'d> Bindings<'d> {
-    pub(in crate::rendering) fn new(device: &'d wgpu::Device, descriptor: Vec<BindingsDescriptorEntry>) -> Self {
+    /// Place provided uniforms at first found Uniform binding entry.
+    pub fn uniforms<U>(&mut self, uniforms: &Vec<U>) -> Result<(), BindingsError> where
+        U: bytemuck::Pod + bytemuck::Zeroable
+    {
+        let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("uniforms buffer"),
+            contents: bytemuck::cast_slice(uniforms.as_slice()),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        self.replace_entry(
+            &BindingsDescriptorEntry::Uniform { size: mem::size_of::<U>() as _ },
+            BindingEntry::Buffer(uniform_buffer),
+        )?;
+
+        Ok(())
+    }
+
+    pub(in crate::rendering) fn new(
+        device: &'d wgpu::Device,
+        descriptor: Vec<BindingsDescriptorEntry>
+    ) -> Self {
         let mut entries = Vec::with_capacity(descriptor.len());
 
         for _ in 0..descriptor.len() {
@@ -25,41 +52,33 @@ impl<'d> Bindings<'d> {
         }
     }
 
-    pub(in crate::rendering) fn texture_view(&mut self, texture_view: TextureView) {
+    /// Place provided `TextureView` at first found Texture and Sampler binding entry.
+    pub(in crate::rendering) fn texture_view(
+        &mut self,
+        texture_view: TextureView
+    ) -> Result<(), BindingsError> {
         self.replace_entry(
             &BindingsDescriptorEntry::Texture,
             BindingEntry::TextureView(texture_view.view),
-        ).unwrap();
+        )?;
 
         self.replace_entry(
             &BindingsDescriptorEntry::Sampler,
             BindingEntry::Sampler(self.device.create_sampler(&texture_view.sampler)),
-        ).unwrap();
+        )?;
+
+        Ok(())
     }
 
-    pub fn uniforms<U>(&mut self, uniforms: &Vec<U>) where
-        U: bytemuck::Pod + bytemuck::Zeroable
-    {
-        let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("uniforms buffer"),
-            contents: bytemuck::cast_slice(uniforms.as_slice()),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        self.replace_entry(
-            &BindingsDescriptorEntry::Uniform { size: mem::size_of::<U>() as _ },
-            BindingEntry::Buffer(uniform_buffer),
-        ).unwrap();
-    }
-
-    pub fn collect<'a>(&'a self) -> Result<Vec<wgpu::BindGroupEntry<'a>>, String> {
+    pub(in crate::rendering) fn collect<'a>(
+        &'a self
+    ) -> Result<Vec<wgpu::BindGroupEntry<'a>>, BindingsError> {
         for (i, e) in self.entries.iter().enumerate() {
             if e.is_none() {
-                return Err(format!(
-                    "Expecting a binding '{:?}' at index {}",
-                    self.descriptor[i],
-                    i
-                ))
+                return Err(BindingsError::EmptyValue {
+                    expecting: self.descriptor[i],
+                    at_index: i,
+                })
             }
         }
 
@@ -100,17 +119,18 @@ impl<'d> Bindings<'d> {
         &mut self,
         descriptor: &BindingsDescriptorEntry,
         entry: BindingEntry,
-    ) -> Result<(), String> {
+    ) -> Result<(), BindingsError> {
         match self.find_entry(descriptor) {
             Some(e) => {
                 *e = Some(entry);
                 Ok(())
             },
-            None => Err(format!("Expecting a {:?} at bindings.", descriptor)),
+            None => Err(BindingsError::NotFound { expecting: *descriptor }),
         }
     }
 }
 
+/// Stores a resource at binding entry.
 enum BindingEntry {
     Buffer(wgpu::Buffer),
     TextureView(wgpu::TextureView),

@@ -7,9 +7,6 @@ mod macros;
 mod bindings;
 pub use bindings::*;
 
-mod bindings_descriptor;
-pub use bindings_descriptor::*;
-
 mod shader_stage;
 pub use shader_stage::*;
 
@@ -27,23 +24,27 @@ pub use vertex_attribute::VertexAttribute;
 
 pub use wgpu::VertexFormat as AttributeFormat;
 
-pub trait ShaderUniformInstance : ShaderInstance {
-    type Uniforms: bytemuck::Zeroable + bytemuck::Pod + bytemuck::NoUninit;
+// TODO
+//  - make a wrapper at bytemuck::cast_slice to be used at uniforms_as_slice
 
-    fn uniforms(&self) -> &Self::Uniforms;
-}
-
-pub trait ShaderVertexInstance<V> : ShaderInstance where
-    V: bytemuck::Pod + bytemuck::Zeroable
-{
-}
-
+/// An instance of a shader, containing bindings.
+/// It's created through [`ShaderBuilder`] and user should keep it somewhere (to avoid drop it).
 pub trait ShaderInstance : ShaderInfo {
+    /// Create a [`ShaderInstance`], by providing a [`Shader`].
+    /// It's only used internally when shader is built and there is no point to be used manually.
     fn new(shader: Shader) -> Self where Self: Sized;
+
+    /// Returns uniforms as a slice, using something like [`bytemuck::cast_slice`] to do the job.
+    /// If there is no uniforms, a empty slice is enough.
     fn uniforms_as_slice<'s>(&'s self) -> &'s [u8];
+
+    /// Fill provided [`Bindings`] with relevant information and return it.
+    /// Values provided must match the [`BindingsDescriptorEntry`] described at shader build.
     fn bindings<'b>(&'b self, bindings: Bindings<'b>) -> Bindings<'b>;
 }
 
+/// Info about a shader.
 pub trait ShaderInfo {
-    fn id(&self) -> ShaderId;
+    /// Returns an opaque object representating a shader unique identifier.
+    fn identifier(&self) -> Shader;
 }

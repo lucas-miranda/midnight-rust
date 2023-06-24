@@ -5,10 +5,9 @@ use std::{
 
 use super::ShaderInfo;
 
-// TODO  change visibility to crate only
-//       an user should not mess with shader id
+/// An opaque object representating a shader unique identifier.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ShaderId(u32);
+pub(super) struct ShaderId(u32);
 
 impl ShaderId {
     pub(super) fn next(&mut self) {
@@ -22,6 +21,7 @@ impl Display for ShaderId {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Shader {
     id: ShaderId,
 }
@@ -32,9 +32,11 @@ impl Shader {
             id,
         }
     }
+}
 
-    pub(super) fn id(&self) -> &ShaderId {
-        &self.id
+impl Display for Shader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
     }
 }
 
@@ -45,8 +47,8 @@ impl Hash for Shader {
 }
 
 impl ShaderInfo for Shader {
-    fn id(&self) -> ShaderId {
-        self.id
+    fn identifier(&self) -> Shader {
+        *self
     }
 }
 

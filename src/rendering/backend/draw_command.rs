@@ -64,7 +64,7 @@ impl<'a> DrawCommand<'a> {
         S: Deref<Target = dyn ShaderInstance>,
     {
         let shader_context = self.shader_builder
-            .get_mut_context(&shader.id())
+            .get_mut_context(&shader.identifier())
             .unwrap();
 
         RenderPass::new(

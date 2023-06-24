@@ -49,8 +49,8 @@ pub struct ShaderBuilder {
     surface_format: wgpu::TextureFormat,
     next_shader_id: ShaderId,
     backend: backend::Backend,
-    contexts: HashMap<ShaderId, ShaderContext>,
-    instances: HashMap<ShaderId, Weak<RefCell<dyn ShaderInstance>>>,
+    contexts: HashMap<Shader, ShaderContext>,
+    instances: HashMap<Shader, Weak<RefCell<dyn ShaderInstance>>>,
     resources: ShaderResources,
 }
 
@@ -70,19 +70,19 @@ impl ShaderBuilder {
         }
     }
 
-    pub fn get_context(&self, shader_id: &ShaderId) -> Option<&ShaderContext> {
-        self.contexts.get(shader_id)
+    pub fn get_context(&self, shader: &Shader) -> Option<&ShaderContext> {
+        self.contexts.get(shader)
     }
 
-    pub fn get_mut_context(&mut self, shader_id: &ShaderId) -> Option<&mut ShaderContext> {
-        self.contexts.get_mut(shader_id)
+    pub fn get_mut_context(&mut self, shader: &Shader) -> Option<&mut ShaderContext> {
+        self.contexts.get_mut(shader)
     }
 
     pub fn resources(&self) -> &ShaderResources {
         &self.resources
     }
 
-    pub fn instances(&self) -> &HashMap<ShaderId, Weak<RefCell<dyn ShaderInstance>>> {
+    pub fn instances(&self) -> &HashMap<Shader, Weak<RefCell<dyn ShaderInstance>>> {
         &self.instances
     }
 
@@ -94,7 +94,7 @@ impl ShaderBuilder {
     }
 
     pub fn destroy(&mut self, shader: Shader) {
-        self.contexts.remove(shader.id());
+        self.contexts.remove(&shader);
     }
 
     fn glsl(&self) -> &ShaderGLSLProcessor {
@@ -113,11 +113,11 @@ impl ShaderBuilder {
         vertex_attributes: Vec<VertexAttribute>,
         bindings: Vec<BindingsDescriptorEntry>,
     ) -> Rc<RefCell<S>> {
-        let id = self.next_shader_id();
+        let shader = Shader::new(self.next_shader_id());
         let device = self.device.upgrade().unwrap();
 
         self.contexts.insert(
-            id,
+            shader,
             ShaderContext::new::<_>(
                 ShaderProcessor::new(Some(&self.backend)),
                 &descriptor,
@@ -128,13 +128,12 @@ impl ShaderBuilder {
             )
         );
 
-        self.resources.insert(id);
+        self.resources.insert(shader);
 
         let instance = {
-            let shader = Shader::new(id);
             let instance = Rc::new(RefCell::new(S::new(shader)));
             let weak = Rc::downgrade(&instance);
-            self.instances.insert(id, weak);
+            self.instances.insert(shader, weak);
 
             instance
         };
