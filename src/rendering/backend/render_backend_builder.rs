@@ -75,7 +75,7 @@ impl<'a> RenderBackendBuilder<'a> {
 
     fn create_surface(instance: &wgpu::Instance, window: &Window) -> Result<wgpu::Surface> {
         unsafe { instance.create_surface(&window) }
-            .map_err(RenderBackendBuildError::SurfaceFailed)
+            .map_err(RenderBackendBuildError::from)
     }
 
     async fn find_adapter(instance: &wgpu::Instance, surface: &wgpu::Surface) -> Result<wgpu::Adapter> {
@@ -101,6 +101,6 @@ impl<'a> RenderBackendBuilder<'a> {
                 None
             )
             .await
-            .map_err(RenderBackendBuildError::LogicalDeviceOpenFailed)
+            .map_err(RenderBackendBuildError::from)
     }
 }

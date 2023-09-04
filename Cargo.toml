@@ -7,7 +7,7 @@ edition = "2021"
 #members = ["raven-proc"]
 
 [features]
-default = ["shader-shaderc", "shader-wgsl"]
+default = ["shader-wgsl"]
 
 shader-naga = ["dep:naga"]
 shader-shaderc = ["dep:shaderc"]

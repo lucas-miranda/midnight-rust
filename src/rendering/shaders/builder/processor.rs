@@ -1,41 +1,91 @@
 use crate::rendering::shaders::{
-    ShaderStage,
+    stage::ShaderStageData,
+    ShaderRawData,
     ShaderStageDescriptor,
-    ShaderStageKind, ShaderRawData,
+    ShaderStageKind,
 };
 
 use super::{
-    backends::ShaderGLSLBackendProcessor,
+    ShaderBackend,
     ShaderFormat,
+    ShaderProcessorError,
 };
 
+#[cfg(any(
+    feature = "shader-shaderc",
+    feature = "shader-naga"
+))]
+use super::GLSLShaderProcessor;
+
+#[cfg(any(
+    feature = "shader-shaderc",
+    feature = "shader-naga"
+))]
 pub struct ShaderProcessor<'a> {
-    glsl_backend: Option<&'a dyn ShaderGLSLBackendProcessor>,
+    backend: &'a ShaderBackend,
+}
+
+#[cfg(not(any(
+    feature = "shader-shaderc",
+    feature = "shader-naga"
+)))]
+pub struct ShaderProcessor<'a> {
+    phantom: std::marker::PhantomData<&'a ()>,
 }
 
 impl<'a> ShaderProcessor<'a> {
-    pub fn new(glsl_backend: Option<&'a dyn ShaderGLSLBackendProcessor>) -> Self {
+    #[cfg(any(
+        feature = "shader-shaderc",
+        feature = "shader-naga"
+    ))]
+    pub fn new(backend: &'a ShaderBackend) -> Self {
         Self {
-            glsl_backend,
+            backend,
+        }
+    }
+
+    #[cfg(not(any(
+        feature = "shader-shaderc",
+        feature = "shader-naga"
+    )))]
+    pub fn new(_backend: &'a ShaderBackend) -> Self {
+        Self {
+            phantom: Default::default(),
         }
     }
 
     pub fn process(
         &self,
-        stage: &ShaderStageKind,
+        _stage: &ShaderStageKind,
         descriptor: &ShaderStageDescriptor
-    ) -> ShaderStage {
+    ) -> Result<ShaderStageData, ShaderProcessorError> {
         match descriptor.format() {
-            ShaderFormat::GLSL => match self.glsl_backend {
+            ShaderFormat::WGSL => Ok(ShaderStageData::new(
+                ShaderRawData::Wgsl(descriptor.src().to_owned())
+            )),
+
+            #[cfg(any(
+                feature = "shader-shaderc",
+                feature = "shader-naga"
+            ))]
+            ShaderFormat::GLSL => match self.backend.glsl() {
                 Some(backend) => backend.build((*stage).into(), descriptor.src()),
                 None => unimplemented!(),
             },
+
+            #[cfg(any(
+                feature = "shader-shaderc",
+                feature = "shader-naga"
+            ))]
             ShaderFormat::HLSL => {
                 unimplemented!();
             },
-            ShaderFormat::WGSL => {
-                ShaderStage::new(ShaderRawData::Wgsl(descriptor.src().to_owned()))
-            },
+
+            #[cfg(not(any(
+                feature = "shader-shaderc",
+                feature = "shader-naga"
+            )))]
+            _ => Err(ShaderProcessorError::FormatNotSupported(*descriptor.format())),
         }
     }
 }

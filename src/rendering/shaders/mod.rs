@@ -7,17 +7,20 @@ mod macros;
 mod bindings;
 pub use bindings::*;
 
-mod shader_stage;
-pub use shader_stage::*;
-
-mod stage_kind;
-pub use stage_kind::ShaderStageKind;
+mod stage;
+pub use stage::*;
 
 mod shader;
 pub use shader::*;
 
 mod descriptor;
 pub use descriptor::*;
+
+mod descriptor_error;
+pub use descriptor_error::*;
+
+mod raw_data;
+pub use raw_data::ShaderRawData;
 
 mod vertex_attribute;
 pub use vertex_attribute::VertexAttribute;
@@ -40,7 +43,7 @@ pub trait ShaderInstance : ShaderInfo {
 
     /// Fill provided [`Bindings`] with relevant information and return it.
     /// Values provided must match the [`BindingsDescriptorEntry`] described at shader build.
-    fn bindings<'b>(&'b self, bindings: Bindings<'b>) -> Bindings<'b>;
+    fn bindings<'b>(&'b self, bindings: Bindings<'b>) -> Result<Bindings<'b>, BindingsError>;
 }
 
 /// Info about a shader.

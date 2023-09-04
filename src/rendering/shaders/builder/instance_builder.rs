@@ -8,6 +8,7 @@ use crate::rendering::shaders::{
     ShaderInstance,
     VertexAttribute,
     ShaderDescriptor,
+    ShaderDescriptorError,
 };
 
 use super::ShaderBuilder;
@@ -57,11 +58,11 @@ impl<'a> ShaderInstanceBuilder<'a> {
         self
     }
 
-    pub fn build<S: ShaderInstance + 'static>(self) -> Rc<RefCell<S>> {
+    pub fn build<S: ShaderInstance + 'static>(self) -> Result<Rc<RefCell<S>>, ShaderDescriptorError> {
         self.builder.build::<S>(
-            self.descriptor,
-            self.vertex_attributes,
-            self.bindings,
-        )
+                self.descriptor,
+                self.vertex_attributes,
+                self.bindings,
+            )
     }
 }

@@ -8,7 +8,7 @@ use crate::rendering::{
         BindingsDescriptorEntry,
         VertexAttribute,
         ShaderDescriptor,
-        ShaderStageKind,
+        ShaderStageKind, ShaderDescriptorError,
     },
     ShaderConfig,
 };
@@ -35,7 +35,7 @@ impl ShaderContext {
         surface_format: wgpu::TextureFormat,
         vertex_attributes: Vec<VertexAttribute>,
         bindings: Vec<BindingsDescriptorEntry>,
-    ) -> Self where
+    ) -> Result<Self, ShaderDescriptorError> where
         D: AsRef<wgpu::Device>
     {
         let vertex_attributes = vec![
@@ -47,20 +47,22 @@ impl ShaderContext {
 
         //
 
-        let vertex_module = match descriptor.process_stage(&ShaderStageKind::Vertex, &processor) {
-            Some(vertex_stage) => device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
+        let vertex_module = {
+            let vertex_stage = descriptor.process_stage(&ShaderStageKind::Vertex, &processor)?;
+
+            device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
                 source: vertex_stage.data().into(),
-            }),
-            None => panic!("Expecting vertex shader stage to be defined."),
+            })
         };
 
-        let fragment_module = match descriptor.process_stage(&ShaderStageKind::Fragment, &processor) {
-            Some(frag_stage) => device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
+        let fragment_module = {
+            let frag_stage = descriptor.process_stage(&ShaderStageKind::Fragment, &processor)?;
+
+            device.as_ref().create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
                 source: frag_stage.data().into(),
-            }),
-            None => panic!("Expecting fragment shader stage to be defined."),
+            })
         };
 
         // -> Create pipeline layout
@@ -89,7 +91,7 @@ impl ShaderContext {
                 push_constant_ranges: &[],
         });
 
-        Self {
+        Ok(Self {
             vertex_module,
             fragment_module,
             bind_group_layout,
@@ -99,7 +101,7 @@ impl ShaderContext {
             surface_format,
             vertex_attributes,
             bindings,
-        }
+        })
     }
 
     pub(in crate::rendering) fn bindings_descriptor(&self) -> Vec<BindingsDescriptorEntry> {
@@ -114,6 +116,7 @@ impl ShaderContext {
         match self.reuse_pipeline && self.pipeline.contains_key(config) {
             true => {
                 println!("Using pipeline...");
+                // NOTE  safe to unwrap  key was checked before
                 self.pipeline.get(config).unwrap()
             },
             false => {
@@ -156,6 +159,7 @@ impl ShaderContext {
                     }
                 );
 
+                // NOTE  safe to unwrap  key was inserted before
                 self.pipeline.get(config).unwrap()
             },
         }

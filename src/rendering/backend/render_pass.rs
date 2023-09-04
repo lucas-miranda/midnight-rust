@@ -2,13 +2,12 @@ use std::slice::Iter;
 use wgpu::util::DeviceExt;
 
 use crate::rendering::{
-    shaders::{builder::ShaderPipeline, Bindings},
-    Color,
-    DrawConfig,
-    RenderState,
-    Texture,
-    Vertex,
+    shaders::{ builder::ShaderPipeline, Bindings },
+    Color, DrawConfig, RenderState, RenderStateError,
+    Texture, Vertex,
 };
+
+use super::PassError;
 
 pub struct RenderPass<'a, V> where
     V: Vertex
@@ -62,11 +61,11 @@ impl<'a, V: Vertex> RenderPass<'a, V> {
     }
     */
 
-    pub fn submit(mut self) -> Result<(), super::RenderBackendOperationError> {
+    pub fn submit(mut self) -> Result<(), PassError> {
         self.device.push_error_scope(wgpu::ErrorFilter::Validation);
 
         let bind_group = {
-            let bindings = self.bindings.collect().unwrap();
+            let bindings = self.bindings.collect().map_err(PassError::from)?;
 
             let bind_group = Some(
                 self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -131,13 +130,9 @@ impl<'a, V: Vertex> RenderPass<'a, V> {
         //futures_lite::future::block_on(ex.run());
 
         match futures_lite::future::block_on(self.device.pop_error_scope()) {
-            Some(err) => {
-                panic!("{:?}", err);
-            },
-            None => {
-                println!("Nothing happened");
-            },
-        }
+            Some(err) => Err(PassError::from(err)),
+            None => Ok(()),
+        }?;
 
         Ok(())
     }
@@ -147,12 +142,14 @@ impl<'a, V: Vertex> RenderState<V> for RenderPass<'a, V> {
     fn extend<'t>(
         &mut self,
         vertices: Iter<V>,
-        texture: Option<&'t Texture>,
+        _texture: Option<&'t Texture>,
         draw_config: DrawConfig<V>,
-    ) {
+    ) -> Result<(), RenderStateError> {
         self.vertex_data.extend(
             vertices.into_iter()
                     .map(|v| *v + draw_config.vertex)
         );
+
+        Ok(())
     }
 }

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use super::{
     builder::ShaderProcessor,
-    ShaderStage,
+    ShaderStageData,
     ShaderStageKind,
-    ShaderFormat,
+    ShaderFormat, ShaderDescriptorError,
 };
 
 // TODO
@@ -41,15 +41,16 @@ impl<'a> ShaderDescriptor<'a> {
         self.stages.get(stage)
     }
 
-    /// Asks provided [`ShaderProcessor`] to process a stage and returns it's result.
+    /// Asks provided `ShaderProcessor` to process a stage and returns it's result.
     pub(super) fn process_stage(
         &self,
         stage: &ShaderStageKind,
         processor: &ShaderProcessor
-    ) -> Option<ShaderStage> {
+    ) -> Result<ShaderStageData, ShaderDescriptorError> {
         match self.get_stage(stage) {
-            Some(d) => Some(processor.process(stage, d)),
-            None => None,
+            Some(d) => processor.process(stage, d)
+                                .map_err(ShaderDescriptorError::from),
+            None => Err(ShaderDescriptorError::StageNotFound(*stage)),
         }
     }
 }

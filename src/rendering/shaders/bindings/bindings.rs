@@ -88,7 +88,7 @@ impl<'d> Bindings<'d> {
                .map(|(i, e)| wgpu::BindGroupEntry {
                    binding: i as u32,
                    resource: e.as_ref()
-                              // safe to unwrap, it was checked already before
+                              // NOTE  safe to unwrap, it was checked already before
                               .unwrap()
                               .resource(),
                })

@@ -5,7 +5,6 @@ use std::{
 
 use super::ShaderInfo;
 
-/// An opaque object representating a shader unique identifier.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub(super) struct ShaderId(u32);
 
@@ -21,6 +20,7 @@ impl Display for ShaderId {
     }
 }
 
+/// An opaque object representating a shader unique identifier.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Shader {
     id: ShaderId,

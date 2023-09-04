@@ -1,20 +1,15 @@
 pub use wgpu::TextureFormat;
 
 use std::{
-    hash::Hash,
     fmt::Display,
+    hash::Hash,
     path::Path,
-    fs::File,
-    io::{
-        self,
-        BufReader,
-    }, num::NonZeroU32,
 };
 
 use wgpu::util::DeviceExt;
 use image::io::Reader as ImageReader;
 use crate::util::Size;
-use super::{GraphicAdapter, backend::RenderBackend};
+use super::{GraphicAdapter, TextureError};
 
 static mut NEXT_ID: TextureId = TextureId(1);
 
@@ -45,29 +40,11 @@ pub struct Texture {
 
 impl Texture {
     pub fn new(
-        adapter: &GraphicAdapter,
+        _adapter: &GraphicAdapter,
         format: TextureFormat,
         size: Size<u32>,
         data: &[u8]
     ) -> Self {
-
-        /*
-        let texture = adapter.backend().device.create_texture(&descriptor);
-
-        adapter.backend().queue.write_texture(
-            texture.as_image_copy(),
-            data,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(NonZeroU32::new(
-                    size.width * (format.describe().block_size as u32)
-                ).unwrap()),
-                rows_per_image: None,
-            },
-            extent
-        );
-        */
-
         let id = unsafe {
             let id = NEXT_ID;
             NEXT_ID.next();
@@ -83,14 +60,20 @@ impl Texture {
         }
     }
 
-    pub fn load<P: AsRef<Path>>(adapter: &GraphicAdapter, path: P) -> io::Result<Self> {
-        let contents = ImageReader::open(path)?
-            // TODO  add a dedicated error to avoid unwrap this
-            .decode().unwrap();
+    pub fn load<P: AsRef<Path> + std::marker::Copy>(
+        adapter: &GraphicAdapter,
+        path: P
+    ) -> Result<Self, TextureError> {
+        let contents = ImageReader::open(path)
+            .map_err(|e| TextureError::Open(e))?
+            .decode()
+            .map_err(|_| TextureError::UnsupportedFormat(path.as_ref().to_owned()))?;
 
         let size = Size::new(contents.width(), contents.height());
-        // TODO  add a dedicated error to avoid unwrap this
-        let data = contents.as_rgba8().unwrap().as_raw();
+
+        let data = contents.as_rgba8()
+                           .ok_or_else(|| TextureError::RepresentationConversion)?
+                           .as_raw();
 
         Ok(Self::new(adapter, TextureFormat::Bgra8UnormSrgb, size, data))
     }
@@ -119,9 +102,6 @@ impl Texture {
 
         println!("Creating texture ({:?}) with size {:?}", self.format, self.size);
 
-        //  17 x 37 = 629 px
-        //  629 x 4 = 2516 bytes
-        // 2516 x 8 = 20128 bits
         let texture = device.create_texture_with_data(
             &queue,
             &descriptor,

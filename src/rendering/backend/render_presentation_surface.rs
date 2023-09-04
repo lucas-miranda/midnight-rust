@@ -1,8 +1,6 @@
 use std::rc::Weak;
-
-use wgpu::SurfaceError;
-
 use crate::util::Size;
+use super::PresentationSurfaceError;
 
 pub struct RenderPresentationSurface {
     device: Weak<wgpu::Device>,
@@ -61,12 +59,13 @@ impl RenderPresentationSurface {
 
     pub(in crate::rendering) fn acquire_surface(
         &mut self
-    ) -> Result<(wgpu::SurfaceTexture, wgpu::TextureView), SurfaceError> {
+    ) -> Result<(wgpu::SurfaceTexture, wgpu::TextureView), PresentationSurfaceError> {
         // reconfigure if needed
-        self.reconfigure_swapchain(false);
+        self.reconfigure_swapchain(false)?;
 
         let surface_texture = self.surface
-            .get_current_texture()?;
+            .get_current_texture()
+            .map_err(|e| PresentationSurfaceError::AcquireSurfaceTexture(e))?;
 
         let surface_view = surface_texture
             .texture
@@ -83,9 +82,12 @@ impl RenderPresentationSurface {
         self.surface.get_capabilities(&self.adapter)
     }
 
-    pub(super) fn reconfigure_swapchain(&mut self, force: bool) {
+    pub(super) fn reconfigure_swapchain(
+        &mut self,
+        force: bool
+    ) -> Result<(), PresentationSurfaceError> {
         if !self.need_reconfigure_swapchain && !force {
-            return;
+            return Ok(());
         }
 
         match self.requested_swapchain_size.take() {
@@ -93,7 +95,9 @@ impl RenderPresentationSurface {
             None => (),
         }
 
-        let device = self.device.upgrade().unwrap();
+        let device = self.device.upgrade()
+                                .ok_or_else(|| PresentationSurfaceError::DeviceLost)?;
+
         let surface_caps = self.capabilities();
 
         let surface_config = wgpu::SurfaceConfiguration {
@@ -132,7 +136,8 @@ impl RenderPresentationSurface {
 
         self.surface_extent = swapchain_config.extent;
 
-        let device = self.device.upgrade().unwrap();
+        let device = self.device.upgrade()
+                                .ok_or_else(|| PresentationSurfaceError::DeviceLost)?;
 
         unsafe {
             self.surface
@@ -142,5 +147,7 @@ impl RenderPresentationSurface {
 
         self.need_reconfigure_swapchain = false;
         */
+
+        Ok(())
     }
 }

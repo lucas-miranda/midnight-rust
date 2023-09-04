@@ -1,16 +1,12 @@
 use crate::rendering::shaders::{
     builder::backends::{
-        ShaderBuilderBackend,
-        ShaderGLSLBackendProcessor,
+        GLSLShaderProcessor,
+        ShaderBackendError,
         ShaderStageKind,
     },
-    Shader,
-    ShaderId,
     ShaderRawData,
-    ShaderStage,
+    ShaderStageData,
 };
-
-pub type Backend = ShadercBuilderBackend;
 
 pub struct ShadercBuilderBackend {
     compiler: shaderc::Compiler,
@@ -24,17 +20,8 @@ impl Default for ShadercBuilderBackend {
     }
 }
 
-impl ShaderBuilderBackend for ShadercBuilderBackend {
-    type GLSL = Self;
-
-    fn glsl(&self) -> &Self::GLSL {
-        self
-    }
-}
-
-impl ShaderGLSLBackendProcessor for ShadercBuilderBackend {
-    //fn build(&self, id: ShaderId, vertex: &str, fragment: &str) -> Shader {
-    fn build(&self, stage: ShaderStageKind, src: &str) -> ShaderStage {
+impl GLSLShaderProcessor for ShadercBuilderBackend {
+    fn build(&self, stage: ShaderStageKind, src: &str) -> Result<ShaderStageData, ShaderBackendError> {
         let options = shaderc::CompileOptions::new().unwrap();
 
         let compiled = self.compiler
@@ -46,36 +33,20 @@ impl ShaderGLSLBackendProcessor for ShadercBuilderBackend {
                 "main",
                 Some(&options),
             )
-            .expect(format!("Failed to compile {} shader", stage).as_str());
+            .map_err(From<shaderc::Error>::from)?;
 
-        /*
-        let compiled_vertex = self.compiler
-            .compile_into_spirv(
-                vertex,
-                shaderc::ShaderKind::Vertex,
-                "unnamed",
-                "main",
-                Some(&options),
-            )
-            .expect("Failed to compile vertex shader");
+        ShaderStageData::new(ShaderRawData::SpirV(compiled.as_binary().to_vec()))
+    }
+}
 
-        let compiled_fragment = self.compiler
-            .compile_into_spirv(
-                fragment,
-                shaderc::ShaderKind::Fragment,
-                "unnamed",
-                "main",
-                Some(&options),
-            )
-            .expect("Failed to compile fragment shader");
-
-        Shader::new(
-            id,
-            ShaderStage::new(ShaderRawData::SpirV(compiled_vertex.as_binary().to_vec())),
-            ShaderStage::new(ShaderRawData::SpirV(compiled_fragment.as_binary().to_vec())),
-        )
-        */
-
-        ShaderStage::new(ShaderRawData::SpirV(compiled.as_binary().to_vec()))
+impl From<shaderc::Error> for ShaderBackendError {
+    fn from(err: shaderc::Error) -> Self {
+        match err {
+            shaderc::Error::CompilationError(err_count, detailed) => Self::CompilationError { err_count, detailed },
+            shaderc::Error::InternalError(msg) => Self::InternalError(msg),
+            shaderc::Error::InvalidStage(msg) => Self::InvalidStage(msg),
+            shaderc::Error::InvalidAssembly(msg) => Self::InvalidAssembly(msg),
+            shaderc::Error::NullResultObject(msg) => Self::NullResultObject(msg),
+        }
     }
 }

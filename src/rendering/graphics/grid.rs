@@ -7,8 +7,9 @@ use crate::{
 };
 
 use super::{
-    Graphic,
     DrawConfig,
+    Graphic,
+    GraphicDrawError,
     RenderState,
     Texture,
 };
@@ -28,11 +29,7 @@ impl<V: VertexPosition<Position = Vector2<f32>>> Graphic<V> for Grid<V> {
     fn draw<'d>(
         &'d self, state: &'d mut dyn RenderState<V>,
         draw_config: DrawConfig<V>,
-    ) {
-        //let origin = Vector2::new(0.0, 0.0);
-        //let mut shader_config = draw_config.shader_config.unwrap();
-        //shader_config.primitive_state().topology = PrimitiveTopology::LineList;
-
+    ) -> Result<(), GraphicDrawError>{
         let mut vertices = Vec::with_capacity(((self.columns * 2) * (self.rows * 2)) as usize);
 
         // rows lines
@@ -56,6 +53,7 @@ impl<V: VertexPosition<Position = Vector2<f32>>> Graphic<V> for Grid<V> {
         });
 
         state.extend(vertices.iter(), None, draw_config)
+             .map_err(GraphicDrawError::from)?;
 
         /*
         state.extend(
@@ -72,5 +70,7 @@ impl<V: VertexPosition<Position = Vector2<f32>>> Graphic<V> for Grid<V> {
             draw_config,
         )
         */
+
+        Ok(())
     }
 }

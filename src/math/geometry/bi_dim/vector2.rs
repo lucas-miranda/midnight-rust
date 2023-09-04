@@ -9,7 +9,6 @@ use std::{
 use bytemuck::{Pod, Zeroable};
 
 use crate::math::num_traits::{
-    self,
     cast::{
         cast,
         NumCast,

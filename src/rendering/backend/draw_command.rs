@@ -1,21 +1,15 @@
 use std::ops::Deref;
 
-use wgpu::SurfaceError;
-
 use crate::rendering::{
     shaders::{
         builder::ShaderBuilder,
         Bindings,
         ShaderInstance,
     },
-    Color,
-    ShaderConfig, Vertex,
+    Color, ShaderConfig, Vertex,
 };
 
-use super::{
-    RenderPass,
-    RenderPresentationSurface,
-};
+use super::{ DrawError, RenderPass, RenderPresentationSurface };
 
 pub struct DrawCommand<'a> {
     queue: &'a wgpu::Queue,
@@ -31,9 +25,12 @@ impl<'a> DrawCommand<'a> {
         queue: &'a wgpu::Queue,
         presentation_surface: &'a mut RenderPresentationSurface,
         shader_builder: &'a mut ShaderBuilder,
-    ) -> Result<Self, SurfaceError> {
+    ) -> Result<Self, DrawError> {
         device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let (surface_texture, surface_view) = presentation_surface.acquire_surface()?;
+        let (surface_texture, surface_view)
+            = presentation_surface
+                .acquire_surface()
+                .map_err(|e| DrawError::AcquirePresentationSurface(e))?;
 
         Ok(Self {
             queue,
@@ -59,40 +56,43 @@ impl<'a> DrawCommand<'a> {
         shader: &'p S,
         config: &ShaderConfig,
         label: wgpu::Label
-    ) -> RenderPass<'p, V> where
+    ) -> Result<RenderPass<'p, V>, DrawError> where
         V: Vertex,
         S: Deref<Target = dyn ShaderInstance>,
     {
         let shader_context = self.shader_builder
             .get_mut_context(&shader.identifier())
-            .unwrap();
+            .ok_or_else(|| DrawError::ShaderNotFound { identifier: shader.identifier() })?;
 
-        RenderPass::new(
+        let bindings = shader.bindings(Bindings::new(
+            &self.device,
+            shader_context.bindings_descriptor()
+        )).map_err(|e| DrawError::BindingsFillFailed(e))?;
+
+        Ok(RenderPass::new(
             self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label,
             }),
             &self.queue,
             &self.surface_view,
             &self.device,
-            shader.bindings(Bindings::new(
-                &self.device,
-                shader_context.bindings_descriptor()
-            )),
+            bindings,
             shader_context.pipeline(self.device, config)
-        )
+        ))
     }
 
     pub fn present(self) {
         self.surface_texture.present();
     }
 
-    pub fn clear<'p, C, V, S>(&'p mut self, color: C, shader: &'p S) -> Result<(), super::RenderBackendOperationError> where
+    pub fn clear<'p, C, V, S>(&'p mut self, color: C, shader: &'p S) -> Result<(), DrawError> where
         C: Into<Color<f32>>,
         V: Vertex,
         S: Deref<Target = dyn ShaderInstance>,
     {
-        self.begin::<V, _>(shader, &ShaderConfig::default(), None)
-            .clear_color(color)
-            .submit()
+        match self.begin::<V, _>(shader, &ShaderConfig::default(), None) {
+            Ok(pass) => pass.clear_color(color).submit().map_err(DrawError::from),
+            Err(e) => Err(e),
+        }
     }
 }

@@ -4,6 +4,7 @@ use std::{
 };
 
 use bytemuck::{Pod, Zeroable};
+use miette::IntoDiagnostic;
 
 use crate::{
     math::Matrix4x4,
@@ -18,7 +19,7 @@ use crate::{
             ShaderInfo,
             ShaderInstance,
             ShaderStageKind,
-            VertexAttribute,
+            VertexAttribute, BindingsError,
         },
         GraphicAdapter,
         Color,
@@ -61,6 +62,8 @@ impl DefaultShader {
                 BindingsDescriptorEntry::uniform::<DefaultUniforms>(),
             ].into_iter())
             .build()
+            .into_diagnostic()
+            .unwrap()
     }
 
     pub fn default_config(&self) -> &ShaderConfig {
@@ -98,10 +101,10 @@ impl ShaderInstance for DefaultShader {
         bytemuck::cast_slice(self.uniforms.as_slice())
     }
 
-    fn bindings<'b>(&'b self, mut bindings: Bindings<'b>) -> Bindings<'b> {
-        bindings.uniforms(&self.uniforms);
+    fn bindings<'b>(&'b self, mut bindings: Bindings<'b>) -> Result<Bindings<'b>, BindingsError> {
+        bindings.uniforms(&self.uniforms)?;
 
-        bindings
+        Ok(bindings)
     }
 }
 

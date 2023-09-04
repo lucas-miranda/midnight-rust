@@ -1,9 +1,5 @@
 mod backends;
-use backends::{
-    backend,
-    ShaderBuilderBackend,
-    ShaderGLSLBackendProcessor,
-};
+pub(super) use backends::*;
 
 mod instance_builder;
 pub use instance_builder::ShaderInstanceBuilder;
@@ -13,6 +9,9 @@ pub(crate) use shader_context::*;
 
 mod processor;
 pub(in crate::rendering::shaders) use processor::ShaderProcessor;
+
+mod processor_error;
+pub(in crate::rendering::shaders) use processor_error::ShaderProcessorError;
 
 pub use wgpu::PrimitiveTopology;
 
@@ -32,12 +31,10 @@ use crate::{
     resources::ShaderResources,
 };
 
-use super::{ShaderId, ShaderInstance};
-
-pub type ShaderGLSLProcessor = <backend::Backend as ShaderBuilderBackend>::GLSL;
+use super::{ShaderId, ShaderInstance, ShaderDescriptorError};
 
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ShaderFormat {
     GLSL,
     HLSL,
@@ -48,7 +45,7 @@ pub struct ShaderBuilder {
     device: Weak<wgpu::Device>,
     surface_format: wgpu::TextureFormat,
     next_shader_id: ShaderId,
-    backend: backend::Backend,
+    backend: ShaderBackend,
     contexts: HashMap<Shader, ShaderContext>,
     instances: HashMap<Shader, Weak<RefCell<dyn ShaderInstance>>>,
     resources: ShaderResources,
@@ -63,7 +60,7 @@ impl ShaderBuilder {
             device,
             surface_format,
             next_shader_id: ShaderId::default(),
-            backend: backend::Backend::default(),
+            backend: ShaderBackend::default(),
             contexts: HashMap::new(),
             instances: HashMap::new(),
             resources: Default::default(),
@@ -97,10 +94,6 @@ impl ShaderBuilder {
         self.contexts.remove(&shader);
     }
 
-    fn glsl(&self) -> &ShaderGLSLProcessor {
-        &self.backend.glsl()
-    }
-
     fn next_shader_id(&mut self) -> ShaderId {
         let id = self.next_shader_id;
         self.next_shader_id.next();
@@ -112,22 +105,20 @@ impl ShaderBuilder {
         descriptor: ShaderDescriptor,
         vertex_attributes: Vec<VertexAttribute>,
         bindings: Vec<BindingsDescriptorEntry>,
-    ) -> Rc<RefCell<S>> {
+    ) -> Result<Rc<RefCell<S>>, ShaderDescriptorError> {
         let shader = Shader::new(self.next_shader_id());
         let device = self.device.upgrade().unwrap();
 
-        self.contexts.insert(
-            shader,
-            ShaderContext::new::<_>(
-                ShaderProcessor::new(Some(&self.backend)),
+        let context = ShaderContext::new::<_>(
+                ShaderProcessor::new(&self.backend),
                 &descriptor,
                 device,
                 self.surface_format,
                 vertex_attributes,
                 bindings,
-            )
-        );
+            )?;
 
+        self.contexts.insert(shader, context);
         self.resources.insert(shader);
 
         let instance = {
@@ -138,7 +129,7 @@ impl ShaderBuilder {
             instance
         };
 
-        instance
+        Ok(instance)
     }
 }
 

@@ -117,13 +117,13 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
                                     //println!("[RenderSystem] Rendering with {:?}", draw_config);
                                     println!("[RenderSystem] Transform: {:?}", *transform);
 
-                                    g.draw(&mut draw_batcher, draw_config)
+                                    g.draw(&mut draw_batcher, draw_config).unwrap()
                                 }
                             }
                         }
                     }
 
-                    draw_batcher.flush();
+                    draw_batcher.flush().unwrap();
                 }
 
                 draw_command.present();

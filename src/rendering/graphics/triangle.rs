@@ -1,15 +1,16 @@
 use crate::{
     math::{
-        Triangle,
         num_traits::Num,
+        Triangle,
         Vector2,
     },
     rendering::VertexPosition,
 };
 
 use super::{
-    Graphic,
     DrawConfig,
+    Graphic,
+    GraphicDrawError,
     RenderState,
     Texture,
 };
@@ -23,7 +24,7 @@ impl<D: Num + Copy + Clone, V: VertexPosition<Position = Vector2<D>>> Graphic<V>
         &'d self,
         state: &'d mut dyn RenderState<V>,
         draw_config: DrawConfig<V>,
-    ) {
+    ) -> Result<(), GraphicDrawError> {
         state.extend(
             vec!(
                 V::from_position(self.a),
@@ -32,6 +33,6 @@ impl<D: Num + Copy + Clone, V: VertexPosition<Position = Vector2<D>>> Graphic<V>
             ).iter(),
             None,
             draw_config,
-        )
+        ).map_err(GraphicDrawError::from)
     }
 }

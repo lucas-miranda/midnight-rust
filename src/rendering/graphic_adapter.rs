@@ -1,12 +1,10 @@
-use wgpu::SurfaceError;
-
 use crate::window::Window;
 
 use super::{
     backend::{
         DrawCommand,
         RenderBackend,
-        RenderBackendBuilder,
+        RenderBackendBuilder, DrawError,
     },
     shaders::builder::ShaderBuilder,
     GraphicAdapterInitError,
@@ -43,7 +41,7 @@ impl GraphicAdapter {
         &mut self.backend.shader_builder
     }
 
-    pub fn prepare_draw(&mut self) -> std::result::Result<DrawCommand, SurfaceError> {
+    pub fn prepare_draw(&mut self) -> std::result::Result<DrawCommand, DrawError> {
         DrawCommand::new(
             &self.backend.device,
             &self.backend.queue,

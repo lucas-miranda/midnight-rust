@@ -6,6 +6,9 @@ pub use grid::Grid;
 mod image;
 pub use self::image::Image;
 
+mod graphic_draw_error;
+pub use graphic_draw_error::GraphicDrawError;
+
 use super::{
     DrawConfig,
     RenderState,
@@ -22,5 +25,7 @@ pub trait Graphic<V> where
         &'d self,
         state: &'d mut dyn RenderState<V>,
         draw_config: DrawConfig<V>,
-    );
+    ) -> Result<(), GraphicDrawError>;
 }
+
+
