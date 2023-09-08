@@ -37,10 +37,10 @@ impl<T> Matrix4x4<T> where
 impl Matrix4x4<f32> {
     pub fn ortho(b: f32, t: f32, l: f32, r: f32, n: f32, f: f32) -> Self {
         Self::with_rows(
-            Vector4::new(2.0 / (r - l), 0.0, 0.0, - (r + b) / (r - l)),
-            Vector4::new(0.0, 2.0 / (t - b), 0.0, - (t + b) / (t - b)),
-            Vector4::new(0.0, 0.0, -2.0 / (f - n), - (f + n) / (f - n)),
-            Vector4::new(0.0, 0.0, 0.0, 1.0),
+            Vector4::new(2.0 / (r - l), 0.0,            0.0,            - (r + l) / (r - l)),
+            Vector4::new(0.0,           2.0 / (t - b),  0.0,            - (t + b) / (t - b)),
+            Vector4::new(0.0,           0.0,            -2.0 / (f - n), - (f + n) / (f - n)),
+            Vector4::new(0.0,           0.0,            0.0,            1.0),
         )
     }
 }

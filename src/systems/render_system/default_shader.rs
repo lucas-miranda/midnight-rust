@@ -52,8 +52,8 @@ impl DefaultShader {
             .shader_builder()
             .create(
                 ShaderDescriptor::default()
-                    .with_stage(ShaderStageKind::Vertex,    ShaderFormat::GLSL, include_str!("shaders/p1.vert"))
-                    .with_stage(ShaderStageKind::Fragment,  ShaderFormat::GLSL, include_str!("shaders/p1.frag"))
+                    .with_stage(ShaderStageKind::Vertex,    ShaderFormat::WGSL, include_str!("shaders/vert.wgsl"))
+                    .with_stage(ShaderStageKind::Fragment,  ShaderFormat::WGSL, include_str!("shaders/frag.wgsl"))
             )
             .set_vertex_attributes(vertex_attrs![
                 Float32x2,

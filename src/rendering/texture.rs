@@ -64,16 +64,25 @@ impl Texture {
         adapter: &GraphicAdapter,
         path: P
     ) -> Result<Self, TextureError> {
-        let contents = ImageReader::open(path)
+        let mut contents = ImageReader::open(path)
             .map_err(|e| TextureError::Open(e))?
             .decode()
             .map_err(|_| TextureError::UnsupportedFormat(path.as_ref().to_owned()))?;
 
         let size = Size::new(contents.width(), contents.height());
 
-        let data = contents.as_rgba8()
-                           .ok_or_else(|| TextureError::RepresentationConversion)?
-                           .as_raw();
+        let data = {
+            let rgba = contents.as_mut_rgba8()
+                               .ok_or_else(|| TextureError::RepresentationConversion)?;
+
+            // convert rgba -> bgra
+            for p in rgba.pixels_mut() {
+                let [ r, g, b, a ] = p.0;
+                p.0 = [ b, g, r, a ];
+            }
+
+            rgba.as_raw()
+        };
 
         Ok(Self::new(adapter, TextureFormat::Bgra8UnormSrgb, size, data))
     }
