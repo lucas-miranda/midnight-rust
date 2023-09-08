@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    cell::{ Ref, RefMut, RefCell },
     collections::HashMap,
     slice::Iter,
     rc::Rc,
@@ -60,12 +60,24 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     }
     */
 
+    pub fn shader_instances<'i>(
+        &'i self
+    ) -> impl Iterator<Item = Ref<'i, (dyn ShaderInstance + 'static)>> {
+        self.batches.values().map(|b| b.instance.borrow())
+    }
+
+    pub fn mut_shader_instances<'i>(
+        &'i self
+    ) -> impl Iterator<Item = RefMut<'i, (dyn ShaderInstance + 'static)>> {
+        self.batches.values().map(|b| b.instance.borrow_mut())
+    }
+
     pub fn flush(mut self) -> Result<(), DrawBatcherError> {
-        println!("-> Flushing...");
-        for (shader_id, batch) in self.batches.drain() {
-            println!("-> With shader id {}", shader_id);
+        //println!("-> Flushing...");
+        for (_shader_id, batch) in self.batches.drain() {
+            //println!("-> With shader id {}", shader_id);
             for ((_texture_id, config), group) in batch.groups {
-                println!("-> Group");
+                //println!("-> Group");
                 let shader = batch.instance.borrow();
                 let mut pass = self.draw_command.begin(&shader, &config, None)?;
 
@@ -73,12 +85,12 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
                     let bindings = pass.bindings();
 
                     if let Some(texture_view) = group.texture_view {
-                        println!("-> With texture ({})", texture_view.id);
+                        //println!("-> With texture ({})", texture_view.id);
                         bindings.texture_view(texture_view).map_err(DrawBatcherError::from)?;
                     }
                 }
 
-                println!("Vertex count: {}", group.vertices.len());
+                //println!("Vertex count: {}", group.vertices.len());
                 pass.extend(
                     group.vertices.iter(),
                     None,
@@ -92,7 +104,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
             }
         }
 
-        println!("----------------\n");
+        //println!("----------------\n");
         Ok(())
     }
 }
@@ -123,11 +135,11 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
 
         let batch_group = match shader_batch.groups.get_mut(&(*texture_id, shader_config)) {
             Some(group) => {
-                println!("Already exists...");
+                //println!("Already exists...");
                 group
             },
             None => {
-                println!("Creating a new one...");
+                //println!("Creating a new one...");
                 shader_batch.groups.insert(
                     (*texture_id, shader_config),
                     BatchGroup {

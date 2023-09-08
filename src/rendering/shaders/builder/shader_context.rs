@@ -115,12 +115,12 @@ impl ShaderContext {
     ) -> &'p ShaderPipeline {
         match self.reuse_pipeline && self.pipeline.contains_key(config) {
             true => {
-                println!("Using pipeline...");
+                //println!("Using pipeline...");
                 // NOTE  safe to unwrap  key was checked before
                 self.pipeline.get(config).unwrap()
             },
             false => {
-                println!("Creating pipeline...");
+                //println!("Creating pipeline...");
 
                 let buffers: Vec<_> = self.vertex_attributes
                     .iter()

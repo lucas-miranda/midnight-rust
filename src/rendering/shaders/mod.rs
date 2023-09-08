@@ -25,6 +25,9 @@ pub use raw_data::ShaderRawData;
 mod vertex_attribute;
 pub use vertex_attribute::VertexAttribute;
 
+mod uniforms;
+pub use uniforms::*;
+
 pub use wgpu::VertexFormat as AttributeFormat;
 
 // TODO
@@ -41,6 +44,9 @@ pub trait ShaderInstance : ShaderInfo {
     /// If there is no uniforms, a empty slice is enough.
     fn uniforms_as_slice<'s>(&'s self) -> &'s [u8];
 
+    fn world_view_projection_uniforms(&self) -> Option<&dyn WorldViewProjectionUniforms>;
+    fn mut_world_view_projection_uniforms(&mut self) -> Option<&mut dyn WorldViewProjectionUniforms>;
+
     /// Fill provided [`Bindings`] with relevant information and return it.
     /// Values provided must match the [`BindingsDescriptorEntry`] described at shader build.
     fn bindings<'b>(&'b self, bindings: Bindings<'b>) -> Result<Bindings<'b>, BindingsError>;
@@ -51,3 +57,4 @@ pub trait ShaderInfo {
     /// Returns an opaque object representating a shader unique identifier.
     fn identifier(&self) -> Shader;
 }
+

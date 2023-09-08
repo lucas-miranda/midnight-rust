@@ -37,6 +37,10 @@ pub struct RenderSystem<V: Vertex> {
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
     default_shader: Rc<RefCell<DefaultShader>>,
     phantom: PhantomData<V>,
+
+    //pub world: Matrix4x4<f32>,
+    pub view: Matrix4x4<f32>,
+    //pub projection: Matrix4x4<f32>,
 }
 
 impl<V: Vertex> RenderSystem<V> {
@@ -45,6 +49,8 @@ impl<V: Vertex> RenderSystem<V> {
             graphic_adapter: Rc::downgrade(graphic_adapter),
             default_shader: DefaultShader::new(&graphic_adapter),
             phantom: Default::default(),
+
+            view: Matrix4x4::default(),
         }
     }
 }
@@ -62,19 +68,24 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
     }
 
     fn run<'q>(&mut self, query: Self::Query<'q>) {
+        /*
         println!(
             "[RenderSystem] captured components({}): {} GraphicDisplayer, {} Transform",
             query.iter_components().count(),
             query.0.iter_components().count(),
             query.1.iter_components().count()
         );
+        */
 
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
         {
             let mut shader = self.default_shader.borrow_mut();
             let mut uniforms = shader.uniforms_mut();
-            uniforms.view = Matrix4x4::ortho(0.0, 180.0, 0.0, 320.0, -100.0, 100.0);
+            //uniforms.view = Matrix4x4::ortho(180.0, 0.0, 0.0, 320.0, -100.0, 100.0);
+
+            //uniforms.view = self.view;
+
             uniforms.color = Color::<f32>::rgb_hex(0x0000FF);
         }
 
@@ -92,7 +103,7 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
                 }
                 */
 
-                // collects everything indo a batcher
+                // collects everything into a batcher
                 {
                     let mut draw_batcher = DrawBatcher::new(&mut draw_command);
 
@@ -115,10 +126,21 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
                                     };
 
                                     //println!("[RenderSystem] Rendering with {:?}", draw_config);
-                                    println!("[RenderSystem] Transform: {:?}", *transform);
+                                    //println!("[RenderSystem] Transform: {:?}", *transform);
 
                                     g.draw(&mut draw_batcher, draw_config).unwrap()
                                 }
+                            }
+                        }
+                    }
+
+                    {
+                        // update world view projection matrices for every shader in-use
+
+                        for mut shader_instance in draw_batcher.mut_shader_instances() {
+                            if let Some(wvp) = shader_instance.mut_world_view_projection_uniforms() {
+                                let view = wvp.mut_view();
+                                *view = self.view;
                             }
                         }
                     }

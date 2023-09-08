@@ -69,7 +69,7 @@ impl<V: VertexPosition<Position = Vector2<f32>> + VertexTexture2D> Graphic<V> fo
         let size: Size<f32>
             = Size::with(self.texture.width(), self.texture.height()).unwrap();
 
-        println!("image size: {}", size);
+        //println!("image size: {}", size);
         let vertices = vec![
             V::from_position(Vector2::new(0.0, 0.0)).with_uv(Vector2::new(0.0, 0.0)),
             V::from_position(Vector2::new(size.width, 0.0)).with_uv(Vector2::new(1.0, 0.0)),

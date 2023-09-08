@@ -19,7 +19,7 @@ use crate::{
             ShaderInfo,
             ShaderInstance,
             ShaderStageKind,
-            VertexAttribute, BindingsError,
+            VertexAttribute, BindingsError, WorldViewProjectionUniforms,
         },
         GraphicAdapter,
         Color,
@@ -37,6 +37,16 @@ use crate::{
 pub struct DefaultUniforms {
     pub view: Matrix4x4<f32>,
     pub color: Color<f32>,
+}
+
+impl WorldViewProjectionUniforms for DefaultUniforms {
+    fn view(&self) -> &Matrix4x4<f32> {
+        &self.view
+    }
+
+    fn mut_view(&mut self) -> &mut Matrix4x4<f32> {
+        &mut self.view
+    }
 }
 
 pub struct DefaultShader {
@@ -99,6 +109,14 @@ impl ShaderInstance for DefaultShader {
 
     fn uniforms_as_slice<'s>(&'s self) -> &'s [u8] {
         bytemuck::cast_slice(self.uniforms.as_slice())
+    }
+
+    fn world_view_projection_uniforms(&self) -> Option<&dyn WorldViewProjectionUniforms> {
+        Some(&self.uniforms[0])
+    }
+
+    fn mut_world_view_projection_uniforms(&mut self) -> Option<&mut dyn WorldViewProjectionUniforms> {
+        Some(&mut self.uniforms[0])
     }
 
     fn bindings<'b>(&'b self, mut bindings: Bindings<'b>) -> Result<Bindings<'b>, BindingsError> {

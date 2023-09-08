@@ -109,7 +109,7 @@ impl Texture {
             view_formats: &[],
         };
 
-        println!("Creating texture ({:?}) with size {:?}", self.format, self.size);
+        //println!("Creating texture ({:?}) with size {:?}", self.format, self.size);
 
         let texture = device.create_texture_with_data(
             &queue,
