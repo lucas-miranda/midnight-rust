@@ -1,4 +1,4 @@
-# Raven
+# Midnight
 
 A game engine made in Rust using [wgpu](https://wgpu.rs/).
 
@@ -10,4 +10,4 @@ Things can change drastically as it moves forward.
 
 # License
 
-Raven is under [MIT License](/LICENSE).
+Midnight is under [MIT License](/LICENSE).
