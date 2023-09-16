@@ -40,10 +40,6 @@ pub trait ShaderInstance : ShaderInfo {
     /// It's only used internally when shader is built and there is no point to be used manually.
     fn new(shader: Shader) -> Self where Self: Sized;
 
-    /// Returns uniforms as a slice, using something like [`bytemuck::cast_slice`] to do the job.
-    /// If there is no uniforms, a empty slice is enough.
-    fn uniforms_as_slice<'s>(&'s self) -> &'s [u8];
-
     fn world_view_projection_uniforms(&self) -> Option<&dyn WorldViewProjectionUniforms>;
     fn mut_world_view_projection_uniforms(&mut self) -> Option<&mut dyn WorldViewProjectionUniforms>;
 

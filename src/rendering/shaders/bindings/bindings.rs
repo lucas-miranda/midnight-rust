@@ -21,14 +21,34 @@ impl<'d> Bindings<'d> {
     pub fn uniforms<U>(&mut self, uniforms: &Vec<U>) -> Result<(), BindingsError> where
         U: bytemuck::Pod + bytemuck::Zeroable
     {
-        let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("uniforms buffer"),
-            contents: bytemuck::cast_slice(uniforms.as_slice()),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let uniform_buffer;
+        let contents = bytemuck::cast_slice(uniforms.as_slice());
+
+        let misaligned_bytes = wgpu::util::align_to(contents.len(), super::UNIFORM_BINDING_ALIGNMENT) - contents.len();
+        if misaligned_bytes > 0 {
+            // misaligned contents
+            let aligned_contents: Vec<_>
+                = contents.iter()
+                          .map(|n| *n)
+                          .chain((0..misaligned_bytes).map(|_| 0u8))
+                          .collect();
+
+            uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("uniforms buffer"),
+                contents: aligned_contents.as_slice(),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+        } else {
+            // aligned contents
+            uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("uniforms buffer"),
+                contents,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+        }
 
         self.replace_entry(
-            &BindingsDescriptorEntry::Uniform { size: mem::size_of::<U>() as _ },
+            &BindingsDescriptorEntry::Uniform { size: wgpu::util::align_to(mem::size_of::<U>() as _, 16) },
             BindingEntry::Buffer(uniform_buffer),
         )?;
 

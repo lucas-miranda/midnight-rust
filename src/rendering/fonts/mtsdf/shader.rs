@@ -110,10 +110,6 @@ impl ShaderInstance for MTSDFShader {
         }
     }
 
-    fn uniforms_as_slice<'s>(&'s self) -> &'s [u8] {
-        bytemuck::cast_slice(self.uniforms.as_slice())
-    }
-
     fn world_view_projection_uniforms(&self) -> Option<&dyn WorldViewProjectionUniforms> {
         Some(&self.uniforms[0])
     }

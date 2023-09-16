@@ -11,7 +11,7 @@ pub enum BindingsDescriptorEntry {
 impl BindingsDescriptorEntry {
     pub fn uniform<U>() -> Self {
         Self::Uniform {
-            size: mem::size_of::<U>() as _,
+            size: wgpu::util::align_to(mem::size_of::<U>(), super::UNIFORM_BINDING_ALIGNMENT) as _,
         }
     }
 
