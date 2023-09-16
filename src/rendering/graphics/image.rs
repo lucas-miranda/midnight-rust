@@ -10,10 +10,11 @@ use crate::{
 };
 
 use super::{
-    Graphic,
     DrawConfig,
+    Graphic,
+    GraphicDrawError,
     RenderState,
-    Texture, GraphicDrawError,
+    Texture,
 };
 
 pub struct Image<V: VertexPosition<Position = Vector2<f32>>> {

@@ -3,13 +3,13 @@ use std::fmt::{
     Display,
 };
 
-use crate::math::num_traits::{
+use crate::math::{num_traits::{
     Num,
     cast::{
         cast,
         NumCast,
     },
-};
+}, Vector2};
 
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
@@ -57,6 +57,17 @@ impl<T> From<&(T, T)> for Size<T> where
         Self {
             width: tuple.0,
             height: tuple.1,
+        }
+    }
+}
+
+impl<T> From<Size<T>> for Vector2<T> where
+    T: Num
+{
+    fn from(size: Size<T>) -> Self {
+        Self {
+            x: size.width,
+            y: size.height,
         }
     }
 }

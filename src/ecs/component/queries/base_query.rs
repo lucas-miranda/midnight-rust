@@ -46,7 +46,7 @@ impl<'a, T, U> BaseQuery for (T, U) where
             self.0.iter_components()
             .map(|entry_a| {
                 for entry_b in self.1.iter_components() {
-                    if entry_b.entity_id().eq(&entry_a.entity_id()) {
+                    if entry_b.entity_id().eq(entry_a.entity_id()) {
                         return QueryEntry::new(
                             entry_a.entity_id().clone(),
                             (Some(entry_a.component), Some(entry_b.component)),

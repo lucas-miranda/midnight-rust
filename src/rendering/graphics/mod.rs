@@ -9,6 +9,9 @@ pub use self::image::Image;
 mod graphic_draw_error;
 pub use graphic_draw_error::GraphicDrawError;
 
+mod text;
+pub use text::Text;
+
 use super::{
     DrawConfig,
     RenderState,
