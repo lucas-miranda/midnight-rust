@@ -22,7 +22,7 @@ impl<R: FontRendering> Font<R> {
         Self {
             rendering,
             glyphs,
-            size: 12.0,
+            size: 32.0,
         }
     }
 
@@ -34,6 +34,8 @@ impl<R: FontRendering> Font<R> {
 pub trait FontRendering {
     fn texture<'t>(&'t self) -> Option<&'t Texture>;
     fn glyphs(&self) -> HashMap<u32, Glyph>;
+    fn descender(&self) -> f32;
+    fn nominal_width(&self) -> f32;
 }
 
 pub struct MTSDFFontRendering {
@@ -73,5 +75,13 @@ impl FontRendering for MTSDFFontRendering {
             .iter()
             .map(|(char_code, glyph_data)| (*char_code, (*glyph_data).into()))
             .collect::<HashMap<_, _>>()
+    }
+
+    fn descender(&self) -> f32 {
+        self.data.metrics.descender
+    }
+
+    fn nominal_width(&self) -> f32 {
+        self.data.atlas.size
     }
 }

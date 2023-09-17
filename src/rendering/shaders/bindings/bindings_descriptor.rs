@@ -37,9 +37,9 @@ impl BindingsDescriptorEntry {
                     has_dynamic_offset: false,
                     min_binding_size: wgpu::BufferSize::new(*size),
                 },
-                Self::Sampler => wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                Self::Sampler => wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 Self::Texture => wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     multisampled: false,
                     view_dimension: wgpu::TextureViewDimension::D2,
                 },

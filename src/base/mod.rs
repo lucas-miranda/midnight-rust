@@ -12,7 +12,7 @@ use crate::{
     window::{Window, WindowContext},
 };
 
-const WINDOW_SIZE: [u32; 2] = [512, 512];
+const WINDOW_SIZE: [u32; 2] = [320, 180];
 
 
 pub struct ApplicationState {

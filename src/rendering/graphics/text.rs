@@ -7,7 +7,6 @@ use crate::{
         VertexPosition,
         VertexTexture2D,
     },
-    util::Size,
 };
 
 use super::{
@@ -54,13 +53,19 @@ impl<R, V> Graphic<V> for Text<R, V> where
         }
 
         if let Some(glyph) = self.font.glyph(text_bytes[0] as u32) {
+            let font_size_ratio = self.font.size / self.font.rendering.nominal_width();
             let glyph_size: Vector2<f32> = glyph.source_area.size.convert();
+            let quad_size = glyph_size * font_size_ratio;
+
+            //println!("glyph_size: {}, font_size_ratio: {}, texture_size: {}", glyph_size, font_size_ratio, texture_size);
 
             let uv = Rectangle::new(
                 glyph.source_area.position.convert::<f32>() / texture_size,
                 glyph_size / texture_size
             );
 
+            //let em_size = Vector2::new(glyph.advance_x, glyph.advance_y + self.font.rendering.descender() as f64);
+            //let unscaled_px_size = Vector2::new(em_size.x * self.font.size as f64, em_size.y * self.font.size as f64);
 
             let vertices = vec![
             /*
@@ -72,8 +77,8 @@ impl<R, V> Graphic<V> for Text<R, V> where
              */
 
                 V::from_position(Vector2::new(0.0, 0.0)).with_uv(uv.top_left()),
-                V::from_position(Vector2::new(glyph_size.x, 0.0)).with_uv(uv.top_right()),
-                V::from_position(Vector2::new(0.0, glyph_size.y)).with_uv(uv.bottom_left()),
+                V::from_position(Vector2::new(quad_size.x, 0.0)).with_uv(uv.top_right()),
+                V::from_position(Vector2::new(0.0, quad_size.y)).with_uv(uv.bottom_left()),
 
             /*
                     4
@@ -83,9 +88,9 @@ impl<R, V> Graphic<V> for Text<R, V> where
                 3---5
              */
 
-                V::from_position(Vector2::new(0.0, glyph_size.y)).with_uv(uv.bottom_left()),
-                V::from_position(Vector2::new(glyph_size.x, 0.0)).with_uv(uv.top_right()),
-                V::from_position(Vector2::new(glyph_size.x, glyph_size.y)).with_uv(uv.bottom_right()),
+                V::from_position(Vector2::new(0.0, quad_size.y)).with_uv(uv.bottom_left()),
+                V::from_position(Vector2::new(quad_size.x, 0.0)).with_uv(uv.top_right()),
+                V::from_position(Vector2::new(quad_size.x, quad_size.y)).with_uv(uv.bottom_right()),
             ];
 
             state.extend(vertices.iter(), self.texture(), draw_config)
