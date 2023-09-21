@@ -124,6 +124,9 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
                                                                 .default_config()
                                                                 .clone()
                                                         ) } ),
+                                        texture_config: graphic_displayer
+                                                         .texture_config
+                                                         .or_else(|| Some(Default::default()))
                                     };
 
                                     //println!("[RenderSystem] Rendering with {:?}", draw_config);

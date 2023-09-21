@@ -3,13 +3,14 @@ pub use wgpu::TextureFormat;
 use std::{
     fmt::Display,
     hash::Hash,
-    path::Path, num::NonZeroU8,
+    num::NonZeroU32,
+    path::Path,
 };
 
 use wgpu::util::DeviceExt;
 use image::io::Reader as ImageReader;
 use crate::util::Size;
-use super::{GraphicAdapter, TextureError};
+use super::{GraphicAdapter, TextureError, TextureConfig};
 
 static mut NEXT_ID: TextureId = TextureId(1);
 
@@ -91,7 +92,12 @@ impl Texture {
         &self.id
     }
 
-    pub(super) fn view<'v>(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> TextureView<'v> {
+    pub(super) fn view<'v>(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        config: TextureConfig
+    ) -> TextureView<'v> {
         let extent = wgpu::Extent3d {
             width: self.size.width,
             height: self.size.height,
@@ -100,16 +106,17 @@ impl Texture {
 
         let descriptor = wgpu::TextureDescriptor {
             size: extent,
-            mip_level_count: 1,
-            sample_count: 1,
+            mip_level_count: config.mip_level_count
+                                   .unwrap_or_else(|| unsafe {
+                                       NonZeroU32::new_unchecked(1u32)
+                                   }).into(),
+            sample_count: config.sampler.sample_count,
             dimension: wgpu::TextureDimension::D2,
             format: self.format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             label: None,
             view_formats: &[],
         };
-
-        //println!("Creating texture ({:?}) with size {:?}", self.format, self.size);
 
         let texture = device.create_texture_with_data(
             &queue,
@@ -121,18 +128,26 @@ impl Texture {
             id: self.id,
             view: texture.create_view(&wgpu::TextureViewDescriptor {
                 label: None,
-                ..wgpu::TextureViewDescriptor::default()
+                format: None,
+                dimension: None,
+                aspect: config.aspect,
+                base_mip_level: config.base_mip_level,
+                mip_level_count: config.mip_level_count,
+                base_array_layer: 0,
+                array_layer_count: None,
             }),
             sampler: wgpu::SamplerDescriptor {
                 label: None,
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                mipmap_filter: wgpu::FilterMode::Linear,
-                //anisotropy_clamp: NonZeroU8::new(1),
-                ..wgpu::SamplerDescriptor::default()
+                address_mode_u: config.sampler.address_mode_u,
+                address_mode_v: config.sampler.address_mode_v,
+                address_mode_w: config.sampler.address_mode_w,
+                mag_filter: config.sampler.mag_filter,
+                min_filter: config.sampler.min_filter,
+                mipmap_filter: config.sampler.mipmap_filter,
+                compare: config.sampler.compare,
+                anisotropy_clamp: config.sampler.anisotropy_clamp,
+                border_color: config.sampler.border_color,
+                ..Default::default()
             },
         }
     }

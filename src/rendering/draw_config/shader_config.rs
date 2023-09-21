@@ -7,29 +7,7 @@ pub use wgpu::{
     PrimitiveTopology,
 };
 
-use super::{
-    shaders::{
-        Shader,
-        ShaderInfo,
-    },
-    Vertex,
-};
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct DrawConfig<V: Vertex> {
-    pub vertex: V,
-    pub shader_config: Option<ShaderConfig>,
-}
-
-/*
-impl<V: Vertex> DrawConfig<V> {
-    pub const EMPTY: Self = DrawConfig {
-        vertex: V::default(),
-        shader_config: None,
-    };
-}
-*/
+use crate::rendering::shaders::{Shader, ShaderInfo};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -46,7 +24,7 @@ impl ShaderConfig {
         }
     }
 
-    pub(super) fn shader(&self) -> &Shader {
+    pub(crate) fn shader(&self) -> &Shader {
         &self.shader
     }
 

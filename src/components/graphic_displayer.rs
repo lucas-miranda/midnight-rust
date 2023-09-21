@@ -7,6 +7,7 @@ use crate::{
     rendering::{
         graphics::Graphic,
         ShaderConfig,
+        TextureConfig,
         Vertex,
     },
 };
@@ -17,6 +18,7 @@ pub struct GraphicDisplayer<V> where
 {
     pub graphic: Option<Box<dyn Graphic<V>>>,
     pub shader_config: Option<ShaderConfig>,
+    pub texture_config: Option<TextureConfig>,
 }
 
 impl<V: Vertex> Component for GraphicDisplayer<V> {

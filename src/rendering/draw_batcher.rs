@@ -16,7 +16,7 @@ use super::{
     ShaderConfig,
     Texture,
     TextureView,
-    Vertex,
+    Vertex, TextureConfig,
 };
 
 pub struct DrawBatcher<'a, 'r, V: Vertex> {
@@ -76,10 +76,10 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
         //println!("-> Flushing...");
         for (_shader_id, batch) in self.batches.drain() {
             //println!("-> With shader id {}", _shader_id);
-            for ((_texture_id, config), group) in batch.groups {
+            for ((_texture_id, shader_config, texture_config), group) in batch.groups {
                 //println!("-> Group");
                 let shader = batch.instance.borrow();
-                let mut pass = self.draw_command.begin(&shader, &config, None)?;
+                let mut pass = self.draw_command.begin(&shader, &shader_config, None)?;
 
                 {
                     let bindings = pass.bindings();
@@ -97,6 +97,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
                     DrawConfig {
                         vertex: V::default(),
                         shader_config: None,
+                        texture_config: None,
                     }
                 ).map_err(DrawBatcherError::from)?;
 
@@ -118,6 +119,7 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
         texture: Option<&'t Texture>,
         draw_config: DrawConfig<V>
     ) -> Result<(), RenderStateError> {
+        let texture_config = draw_config.texture_config.unwrap_or_default();
         let shader_config = draw_config
                              .shader_config
                              .ok_or_else(|| RenderStateError::MissingShaderConfig)?;
@@ -133,7 +135,7 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
                                .get_mut(shader)
                                .ok_or_else(|| RenderStateError::ShaderNotFound(*shader))?;
 
-        let batch_group = match shader_batch.groups.get_mut(&(*texture_id, shader_config)) {
+        let batch_group = match shader_batch.groups.get_mut(&(*texture_id, shader_config, texture_config)) {
             Some(group) => {
                 //println!("Already exists...");
                 group
@@ -141,18 +143,18 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
             None => {
                 //println!("Creating a new one...");
                 shader_batch.groups.insert(
-                    (*texture_id, shader_config),
+                    (*texture_id, shader_config, texture_config),
                     BatchGroup {
                         texture_view: texture.map(|t| {
                             let (device, queue) = self.draw_command.device_queue();
-                            t.view(device, queue)
+                            t.view(device, queue, texture_config)
                         }),
                         vertices: Vec::new(),
                     }
                 );
 
                 // NOTE  safe to unwrap  key was inserted previously
-                shader_batch.groups.get_mut(&(*texture_id, shader_config)).unwrap()
+                shader_batch.groups.get_mut(&(*texture_id, shader_config, texture_config)).unwrap()
             },
         };
 
@@ -166,7 +168,7 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
 
 struct ShaderBatch<'a, V: Vertex> {
     pub instance: Rc<RefCell<dyn ShaderInstance>>,
-    pub groups: HashMap<(TextureId, ShaderConfig), BatchGroup<'a, V>>,
+    pub groups: HashMap<(TextureId, ShaderConfig, TextureConfig), BatchGroup<'a, V>>,
 }
 
 #[derive(Default)]
