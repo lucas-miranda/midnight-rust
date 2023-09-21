@@ -2,7 +2,7 @@ mod base_query;
 pub use base_query::BaseQuery;
 
 mod query;
-pub use query::Query;
+pub use query::*;
 
 mod fn_query;
 pub use fn_query::FnQuery;

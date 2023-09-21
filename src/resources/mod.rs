@@ -5,6 +5,9 @@ use crate::rendering::shaders::{
     Shader,
 };
 
+// NOTE  maybe we don't need this structure
+//       using an indirect type data structure isn't good to work with
+
 #[derive(Default)]
 pub struct ShaderResources {
     identifiers: HashMap<Shader, ShaderResource>,

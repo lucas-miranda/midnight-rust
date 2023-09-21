@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{
     math::{
         num_traits::Num,
@@ -15,9 +17,20 @@ use super::{
     Texture,
 };
 
-impl<D: Num + Copy + Clone, V: VertexPosition<Position = Vector2<D>>> Graphic<V> for Triangle<D> {
+impl<D, V> Graphic<V> for Triangle<D> where
+    D: Num + Copy + Clone + 'static,
+    V: VertexPosition<Position = Vector2<D>>,
+{
     fn texture<'t>(&'t self) -> Option<&'t Texture> {
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 
     fn draw<'d>(

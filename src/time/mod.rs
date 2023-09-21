@@ -1,8 +1,6 @@
-use std::{
-    fmt,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
+#[derive(Debug)]
 pub struct Time {
     begin: Instant,
 }
@@ -22,38 +20,23 @@ impl Time {
         self.begin.elapsed()
     }
 
-    pub fn delta<'a>(&'a self, last_instant: &mut Instant) -> DeltaTime<'a> {
+    pub fn delta(&self, last_instant: &mut Instant) -> DeltaTime {
         let now = Self::now();
-        let delta_time = DeltaTime::new(&self, now - *last_instant);
+        let delta_time = DeltaTime::new(now - *last_instant);
         *last_instant = now;
         delta_time
     }
 }
 
-pub struct DeltaTime<'a> {
-    time: &'a Time,
-    duration: Duration,
+#[derive(Debug, Clone, Copy)]
+pub struct DeltaTime {
+    pub duration: Duration,
 }
 
-impl<'a> DeltaTime<'a> {
-    pub(crate) fn new(time: &'a Time, duration: Duration) -> Self {
+impl DeltaTime {
+    pub(crate) fn new(duration: Duration) -> Self {
         Self {
-            time,
             duration,
         }
-    }
-
-    pub fn base_time(&self) -> &Time {
-        self.time
-    }
-
-    pub fn duration(&self) -> &Duration {
-        &self.duration
-    }
-}
-
-impl<'a> fmt::Debug for DeltaTime<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.duration.fmt(f)
     }
 }

@@ -5,6 +5,7 @@ use crate::ecs::{
         ComponentStrongAnyRef,
     },
     system::System,
+    FrameState,
 };
 use crate::input;
 
@@ -29,7 +30,7 @@ impl<'a> System for UpdateSystem<'a> {
     fn input<'q>(&mut self, _query: Self::Query<'q>, _event: &input::DeviceEvent) {
     }
 
-    fn run<'q>(&mut self, _query: Self::Query<'q>) {
+    fn run<'q>(&mut self, _query: Self::Query<'q>, _state: &FrameState) {
         //println!("[UpdateSystem] {} captured components", query.count());
 
         //for component_ref in query.iter_components() {

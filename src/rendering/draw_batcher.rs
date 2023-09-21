@@ -75,7 +75,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     pub fn flush(mut self) -> Result<(), DrawBatcherError> {
         //println!("-> Flushing...");
         for (_shader_id, batch) in self.batches.drain() {
-            //println!("-> With shader id {}", shader_id);
+            //println!("-> With shader id {}", _shader_id);
             for ((_texture_id, config), group) in batch.groups {
                 //println!("-> Group");
                 let shader = batch.instance.borrow();

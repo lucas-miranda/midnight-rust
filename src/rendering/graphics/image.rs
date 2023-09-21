@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, any::Any};
 
 use crate::{
     math::Vector2,
@@ -60,6 +60,14 @@ impl<V: VertexPosition<Position = Vector2<f32>>> Graphic<V> for Image<V> {
 impl<V: VertexPosition<Position = Vector2<f32>> + VertexTexture2D> Graphic<V> for Image<V> {
     fn texture<'t>(&'t self) -> Option<&'t Texture> {
         Some(&self.texture)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 
     fn draw<'d>(

@@ -3,7 +3,9 @@ use std::any::Any;
 use crate::ecs::{
     component::BaseQuery,
     entity::EntitiesIter,
+    FrameState,
 };
+
 use crate::input;
 
 use super::System;
@@ -12,7 +14,7 @@ pub struct SystemInterface {
     system: Box<dyn Any>,
     setup_fn: Box<dyn FnMut(&mut Box<dyn Any>)>,
     input_fn: Box<dyn FnMut(&mut Box<dyn Any>, EntitiesIter<'_>, &input::DeviceEvent)>,
-    run_fn: Box<dyn FnMut(&mut Box<dyn Any>, EntitiesIter<'_>)>,
+    run_fn: Box<dyn FnMut(&mut Box<dyn Any>, EntitiesIter<'_>, &FrameState<'_>)>,
 }
 
 impl SystemInterface {
@@ -34,7 +36,7 @@ impl SystemInterface {
 
                 sys.input(query, event)
             }),
-            run_fn: Box::new(|boxed_system, entities| {
+            run_fn: Box::new(|boxed_system, entities, state| {
                 let sys = boxed_system.downcast_mut::<S>().unwrap();
                 let mut query = sys.create_query();
 
@@ -42,7 +44,7 @@ impl SystemInterface {
                     query.capture_components(entity.borrow().components());
                 }
 
-                sys.run(query);
+                sys.run(query, state);
             }),
         }
     }
@@ -55,7 +57,7 @@ impl SystemInterface {
         (*self.input_fn)(&mut self.system, entities, event)
     }
 
-    pub fn run(&mut self, entities: EntitiesIter<'_>) {
-        (*self.run_fn)(&mut self.system, entities)
+    pub fn run(&mut self, entities: EntitiesIter<'_>, state: &FrameState) {
+        (*self.run_fn)(&mut self.system, entities, state)
     }
 }

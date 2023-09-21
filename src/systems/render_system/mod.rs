@@ -18,6 +18,7 @@ use crate::{
             QueryEntry,
         },
         system::System,
+        FrameState,
     },
     input,
     math::{
@@ -67,7 +68,7 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
     fn input<'q>(&mut self, _query: Self::Query<'q>, _event: &input::DeviceEvent) {
     }
 
-    fn run<'q>(&mut self, query: Self::Query<'q>) {
+    fn run<'q>(&mut self, query: Self::Query<'q>, _state: &FrameState) {
         /*
         println!(
             "[RenderSystem] captured components({}): {} GraphicDisplayer, {} Transform",

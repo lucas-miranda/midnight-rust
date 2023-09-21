@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, any::Any};
 
 use crate::{
     math::{Vector2, Rectangle},
@@ -18,7 +18,7 @@ use super::{
 };
 
 pub struct Text<R, V> where
-    R: FontRendering,
+    R: FontRendering + 'static,
     V: VertexPosition<Position = Vector2<f32>> + VertexTexture2D,
 {
     pub font: Font<R>,
@@ -32,6 +32,14 @@ impl<R, V> Graphic<V> for Text<R, V> where
 {
     fn texture<'t>(&'t self) -> Option<&'t Texture> {
         self.font.rendering.texture()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 
     fn draw<'d>(

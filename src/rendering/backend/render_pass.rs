@@ -100,7 +100,7 @@ impl<'a, V: Vertex> RenderPass<'a, V> {
                     view: self.surface_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(Color::<f32>::WHITE.into()),
+                        load: wgpu::LoadOp::Load,
                         store: true,
                     },
                 })],
