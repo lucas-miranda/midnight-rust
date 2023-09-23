@@ -14,6 +14,8 @@ pub struct TextureConfig {
     pub aspect: TextureAspect,
     pub base_mip_level: u32,
     pub mip_level_count: Option<NonZeroU32>,
+    pub base_array_layer: u32,
+    pub array_layer_count: Option<NonZeroU32>,
     pub sampler: TextureSamplerConfig,
 }
 

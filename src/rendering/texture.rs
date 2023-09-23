@@ -7,7 +7,7 @@ use std::{
     path::Path,
 };
 
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, TextureViewDimension, TextureSampleType, FilterMode, SamplerBindingType};
 use image::io::Reader as ImageReader;
 use crate::util::Size;
 use super::{GraphicAdapter, TextureError, TextureConfig};
@@ -124,17 +124,21 @@ impl Texture {
             self.data.as_slice(),
         );
 
+        let filterable = config.sampler.mag_filter != FilterMode::Nearest
+                || config.sampler.min_filter != FilterMode::Nearest
+                || config.sampler.mipmap_filter != FilterMode::Nearest;
+
         TextureView {
-            id: self.id,
+            //id: self.id,
             view: texture.create_view(&wgpu::TextureViewDescriptor {
                 label: None,
                 format: None,
-                dimension: None,
+                dimension: Some(TextureViewDimension::D2),
                 aspect: config.aspect,
                 base_mip_level: config.base_mip_level,
                 mip_level_count: config.mip_level_count,
-                base_array_layer: 0,
-                array_layer_count: None,
+                base_array_layer: config.base_array_layer,
+                array_layer_count: config.array_layer_count,
             }),
             sampler: wgpu::SamplerDescriptor {
                 label: None,
@@ -149,6 +153,16 @@ impl Texture {
                 border_color: config.sampler.border_color,
                 ..Default::default()
             },
+            sample_count: config.sampler.sample_count,
+            sample_type: TextureSampleType::Float {
+                filterable,
+            },
+            sampler_binding_type: if filterable {
+                SamplerBindingType::Filtering
+            } else {
+                SamplerBindingType::NonFiltering
+            },
+            view_dimension: TextureViewDimension::D2,
         }
     }
 
@@ -166,7 +180,11 @@ impl Texture {
 }
 
 pub(super) struct TextureView<'a> {
-    pub id: TextureId,
+    //pub id: TextureId,
     pub view: wgpu::TextureView,
     pub sampler: wgpu::SamplerDescriptor<'a>,
+    pub sample_count: u32,
+    pub sample_type: TextureSampleType,
+    pub sampler_binding_type: SamplerBindingType,
+    pub view_dimension: TextureViewDimension,
 }

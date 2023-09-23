@@ -15,8 +15,9 @@ use super::{
     RenderStateError,
     ShaderConfig,
     Texture,
+    TextureConfig,
     TextureView,
-    Vertex, TextureConfig,
+    Vertex,
 };
 
 pub struct DrawBatcher<'a, 'r, V: Vertex> {
@@ -74,9 +75,9 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
 
     pub fn flush(mut self) -> Result<(), DrawBatcherError> {
         //println!("-> Flushing...");
-        for (_shader_id, batch) in self.batches.drain() {
+        for (shader_id, batch) in self.batches.drain() {
             //println!("-> With shader id {}", _shader_id);
-            for ((_texture_id, shader_config, texture_config), group) in batch.groups {
+            for ((_texture_id, shader_config, _texture_config), group) in batch.groups {
                 //println!("-> Group");
                 let shader = batch.instance.borrow();
                 let mut pass = self.draw_command.begin(&shader, &shader_config, None)?;
@@ -86,7 +87,8 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
 
                     if let Some(texture_view) = group.texture_view {
                         //println!("-> With texture ({})", texture_view.id);
-                        bindings.texture_view(texture_view).map_err(DrawBatcherError::from)?;
+                        bindings.texture_view(texture_view)
+                                .map_err(|e| DrawBatcherError::Bindings(e, shader_id))?;
                     }
                 }
 
@@ -119,12 +121,28 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
         texture: Option<&'t Texture>,
         draw_config: DrawConfig<V>
     ) -> Result<(), RenderStateError> {
-        let texture_config = draw_config.texture_config.unwrap_or_default();
         let shader_config = draw_config
                              .shader_config
                              .ok_or_else(|| RenderStateError::MissingShaderConfig)?;
 
         let shader = shader_config.shader();
+
+        match self.draw_command.shader_builder().get_context(shader) {
+            Some(c) => {
+                // check if `draw_config.texture_config` violates shader bindings requirements
+                // TODO  maybe we can disable these validations at release mode
+
+                for b in c.bindings_descriptor() {
+                    b.validate_config(&draw_config)
+                     .map_err(RenderStateError::from)?;
+                }
+
+                Ok::<_, RenderStateError>(())
+            },
+            None => return Err(RenderStateError::ShaderNotFound(*shader))
+        }?;
+
+        let texture_config = draw_config.texture_config.unwrap_or_default();
 
         let texture_id = match texture {
             Some(t) => t.id(),
@@ -137,11 +155,9 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
 
         let batch_group = match shader_batch.groups.get_mut(&(*texture_id, shader_config, texture_config)) {
             Some(group) => {
-                //println!("Already exists...");
                 group
             },
             None => {
-                //println!("Creating a new one...");
                 shader_batch.groups.insert(
                     (*texture_id, shader_config, texture_config),
                     BatchGroup {

@@ -104,8 +104,8 @@ impl ShaderContext {
         })
     }
 
-    pub(in crate::rendering) fn bindings_descriptor(&self) -> Vec<BindingsDescriptorEntry> {
-        self.bindings.clone()
+    pub(in crate::rendering) fn bindings_descriptor(&self) -> &Vec<BindingsDescriptorEntry> {
+        &self.bindings
     }
 
     pub(in crate::rendering) fn pipeline<'p>(

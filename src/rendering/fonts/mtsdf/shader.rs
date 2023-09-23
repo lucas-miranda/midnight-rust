@@ -13,21 +13,26 @@ use crate::{
             AttributeFormat,
             Bindings,
             BindingsDescriptorEntry,
+            BindingsError,
             Shader,
+            ShaderDescriptor,
             ShaderFormat,
             ShaderInfo,
             ShaderInstance,
-            VertexAttribute,
             ShaderStageKind,
-            ShaderDescriptor, BindingsError, WorldViewProjectionUniforms,
+            VertexAttribute,
+            WorldViewProjectionUniforms,
         },
-        GraphicAdapter,
         Color,
-        ShaderConfig,
         FrontFace,
+        GraphicAdapter,
         PolygonMode,
         PrimitiveState,
         PrimitiveTopology,
+        SamplerBindingType,
+        ShaderConfig,
+        TextureSampleType,
+        TextureViewDimension,
     },
     vertex_attrs,
 };
@@ -71,8 +76,8 @@ impl MTSDFShader {
             ].into_iter())
             .bindings(vec![
                 BindingsDescriptorEntry::uniform::<Uniforms>(),
-                BindingsDescriptorEntry::texture(),
-                BindingsDescriptorEntry::sampler(),
+                BindingsDescriptorEntry::texture(TextureSampleType::Float { filterable: true }, false, TextureViewDimension::D2),
+                BindingsDescriptorEntry::sampler(SamplerBindingType::Filtering),
             ].into_iter())
             .build()
             .into_diagnostic()

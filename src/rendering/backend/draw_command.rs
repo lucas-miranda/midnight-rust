@@ -66,7 +66,7 @@ impl<'a> DrawCommand<'a> {
 
         let bindings = shader.bindings(Bindings::new(
             &self.device,
-            shader_context.bindings_descriptor()
+            shader_context.bindings_descriptor().clone()
         )).map_err(|e| DrawError::BindingsFillFailed(e))?;
 
         Ok(RenderPass::new(

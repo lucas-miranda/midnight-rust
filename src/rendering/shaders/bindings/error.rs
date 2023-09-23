@@ -10,4 +10,7 @@ pub enum BindingsError {
 
     #[error("a binding with type '{:?}' was not found", expecting)]
     NotFound { expecting: BindingsDescriptorEntry },
+
+    #[error("validation failed: {0}")]
+    ValidationFailed(String),
 }

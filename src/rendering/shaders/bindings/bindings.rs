@@ -2,15 +2,18 @@ use std::mem;
 use wgpu::util::DeviceExt;
 
 use crate::rendering::TextureView;
-use super::{BindingsDescriptorEntry, BindingsError};
+use super::{
+    BindingKind,
+    BindingsDescriptorEntry,
+    BindingsError,
+};
 
 /// Bindings which will be applied to shader.
 /// It's created with a descriptor, so it only expects values to be filled at correct places.
 /// Think this as empty slots waiting to be filled.
 pub struct Bindings<'d> {
     device: &'d wgpu::Device,
-    entries: Vec<Option<BindingEntry>>,
-    descriptor: Vec<BindingsDescriptorEntry>,
+    entries: Vec<BindingEntry>,
 }
 
 // TODO
@@ -49,7 +52,7 @@ impl<'d> Bindings<'d> {
 
         self.replace_entry(
             &BindingsDescriptorEntry::Uniform { size: wgpu::util::align_to(mem::size_of::<U>() as _, 16) },
-            BindingEntry::Buffer(uniform_buffer),
+            RawBinding::Buffer(uniform_buffer),
         )?;
 
         Ok(())
@@ -59,16 +62,11 @@ impl<'d> Bindings<'d> {
         device: &'d wgpu::Device,
         descriptor: Vec<BindingsDescriptorEntry>
     ) -> Self {
-        let mut entries = Vec::with_capacity(descriptor.len());
-
-        for _ in 0..descriptor.len() {
-            entries.push(None);
-        }
-
         Self {
             device,
-            entries,
-            descriptor,
+            entries: descriptor.iter()
+                  .map(|e| BindingEntry::new(*e))
+                  .collect(),
         }
     }
 
@@ -78,13 +76,17 @@ impl<'d> Bindings<'d> {
         texture_view: TextureView
     ) -> Result<(), BindingsError> {
         self.replace_entry(
-            &BindingsDescriptorEntry::Texture,
-            BindingEntry::TextureView(texture_view.view),
+            &BindingsDescriptorEntry::Texture {
+                sample_type: texture_view.sample_type,
+                multisampled: texture_view.sample_count > 1,
+                view_dimension: texture_view.view_dimension,
+            },
+            RawBinding::TextureView(texture_view.view),
         )?;
 
         self.replace_entry(
-            &BindingsDescriptorEntry::Sampler,
-            BindingEntry::Sampler(self.device.create_sampler(&texture_view.sampler)),
+            &BindingsDescriptorEntry::Sampler(texture_view.sampler_binding_type),
+            RawBinding::Sampler(self.device.create_sampler(&texture_view.sampler)),
         )?;
 
         Ok(())
@@ -94,9 +96,9 @@ impl<'d> Bindings<'d> {
         &'a self
     ) -> Result<Vec<wgpu::BindGroupEntry<'a>>, BindingsError> {
         for (i, e) in self.entries.iter().enumerate() {
-            if e.is_none() {
+            if !e.has_value() {
                 return Err(BindingsError::EmptyValue {
-                    expecting: self.descriptor[i],
+                    expecting: e.descriptor,
                     at_index: i,
                 })
             }
@@ -107,7 +109,8 @@ impl<'d> Bindings<'d> {
                .enumerate()
                .map(|(i, e)| wgpu::BindGroupEntry {
                    binding: i as u32,
-                   resource: e.as_ref()
+                   resource: e.raw
+                              .as_ref()
                               // NOTE  safe to unwrap, it was checked already before
                               .unwrap()
                               .resource(),
@@ -119,30 +122,24 @@ impl<'d> Bindings<'d> {
     fn find_entry(
         &mut self,
         descriptor: &BindingsDescriptorEntry,
-    ) -> Option<&mut Option<BindingEntry>> {
-        let mut index = None;
-
-        for (i, d) in self.descriptor.iter().enumerate() {
-            if d == descriptor {
-                index = Some(i);
-                break;
+    ) -> Option<&mut BindingEntry> {
+        for e in self.entries.iter_mut() {
+            if e.descriptor.match_descriptor(descriptor) {
+                return Some(e);
             }
         };
 
-        match index {
-            Some(i) => self.entries.get_mut(i),
-            None => None
-        }
+        None
     }
 
     fn replace_entry(
         &mut self,
         descriptor: &BindingsDescriptorEntry,
-        entry: BindingEntry,
+        raw: RawBinding,
     ) -> Result<(), BindingsError> {
         match self.find_entry(descriptor) {
             Some(e) => {
-                *e = Some(entry);
+                (*e).raw = Some(raw);
                 Ok(())
             },
             None => Err(BindingsError::NotFound { expecting: *descriptor }),
@@ -150,14 +147,38 @@ impl<'d> Bindings<'d> {
     }
 }
 
+//
+
+struct BindingEntry {
+    pub kind: BindingKind,
+    pub descriptor: BindingsDescriptorEntry,
+    pub raw: Option<RawBinding>,
+}
+
+impl BindingEntry {
+    pub fn new(descriptor: BindingsDescriptorEntry) -> Self {
+        Self {
+            kind: descriptor.kind(),
+            descriptor,
+            raw: None,
+        }
+    }
+
+    pub fn has_value(&self) -> bool {
+        self.raw.is_some()
+    }
+}
+
+//
+
 /// Stores a resource at binding entry.
-enum BindingEntry {
+enum RawBinding {
     Buffer(wgpu::Buffer),
     TextureView(wgpu::TextureView),
     Sampler(wgpu::Sampler),
 }
 
-impl BindingEntry {
+impl RawBinding {
     pub fn resource<'b>(&'b self) -> wgpu::BindingResource<'b> {
         match self {
             Self::Buffer(ref buf) => buf.as_entire_binding(),

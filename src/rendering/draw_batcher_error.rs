@@ -3,7 +3,7 @@ use miette::Diagnostic;
 
 use super::{
     backend::{DrawError, PassError},
-    shaders::BindingsError, RenderStateError,
+    shaders::{BindingsError, Shader}, RenderStateError,
 };
 
 #[derive(Error, Diagnostic, Debug)]
@@ -11,8 +11,8 @@ pub enum DrawBatcherError {
     #[error("draw command failed")]
     DrawCommand(#[from] DrawError),
 
-    #[error("bindings failed: {0}")]
-    Bindings(#[from] BindingsError),
+    #[error("shader {1:?} -> bindings failed: {0}")]
+    Bindings(BindingsError, Shader),
 
     #[error("pass submission failed: {0}")]
     PassSubmit(#[from] PassError),

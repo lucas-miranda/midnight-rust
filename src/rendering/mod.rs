@@ -36,5 +36,14 @@ pub use texture_error::TextureError;
 mod vertex;
 pub use vertex::*;
 
-pub use wgpu::{TextureAspect, AddressMode, FilterMode, CompareFunction, SamplerBorderColor};
+pub use wgpu::{
+    AddressMode,
+    CompareFunction,
+    FilterMode,
+    SamplerBindingType,
+    SamplerBorderColor,
+    TextureAspect,
+    TextureSampleType,
+    TextureViewDimension,
+};
 
