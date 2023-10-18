@@ -1,6 +1,9 @@
-use std::fmt::{
-    self,
-    Display,
+use std::{
+    ops,
+    fmt::{
+        self,
+        Display,
+    }
 };
 
 use crate::math::{num_traits::{
@@ -50,6 +53,19 @@ impl<T: Num + Display> Display for Size<T> {
     }
 }
 
+impl<T> ops::Div for Size<T> where
+    T: Num
+{
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self::Output {
+        Self {
+            width: self.width / other.width,
+            height: self.height / other.height,
+        }
+    }
+}
+
 impl<T> From<&(T, T)> for Size<T> where
     T: Num + Copy
 {
@@ -71,3 +87,4 @@ impl<T> From<Size<T>> for Vector2<T> where
         }
     }
 }
+

@@ -1,8 +1,6 @@
 mod triangle;
 
 mod grid;
-use std::any::Any;
-
 pub use grid::Grid;
 
 mod image;
@@ -13,6 +11,11 @@ pub use graphic_draw_error::GraphicDrawError;
 
 mod text;
 pub use text::Text;
+
+mod tilemap;
+pub use tilemap::Tilemap;
+
+use std::any::Any;
 
 use super::{
     DrawConfig,
