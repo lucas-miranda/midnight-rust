@@ -3,6 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
     base::ApplicationState,
     ecs::{Domain, FrameState},
+    input::{Input, Event},
     rendering::GraphicAdapter,
     time::Time,
     window::WindowContext,
@@ -68,6 +69,7 @@ impl ApplicationLoop for ContinuousLoop {
             main_window: window,
             time,
             graphic_adapter: Rc::new(RefCell::new(graphic_adapter)),
+            input: Input::default(),
         };
 
         // setup all domains
@@ -90,9 +92,13 @@ impl ApplicationLoop for ContinuousLoop {
                     state.graphic_adapter.borrow_mut().request_resize_surface(dims.width, dims.height);
                 }
                 winit::event::Event::DeviceEvent { event, .. } => {
+                    state.input.event.replace(Event::from(event));
+
                     for domain in &mut self.domains {
-                        domain.input(&event);
+                        domain.input(&mut state);
                     }
+
+                    state.input.event.take();
                 }
                 winit::event::Event::MainEventsCleared => {
                     let delta_time = state.time.delta(&mut last_update_instant);

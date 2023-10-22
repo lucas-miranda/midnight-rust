@@ -7,6 +7,7 @@ use std::{
 };
 
 use crate::{
+    base::ApplicationState,
     components::{
         transform::Transform,
         GraphicDisplayer,
@@ -20,7 +21,6 @@ use crate::{
         system::System,
         FrameState,
     },
-    input,
     math::{
         Matrix4x4,
         Vector2,
@@ -65,7 +65,7 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
     fn setup(&mut self) {
     }
 
-    fn input<'q>(&mut self, _query: Self::Query<'q>, _event: &input::DeviceEvent) {
+    fn input<'q>(&mut self, _query: Self::Query<'q>, _state: &mut ApplicationState) {
     }
 
     fn run<'q>(&mut self, query: Self::Query<'q>, _state: &FrameState) {

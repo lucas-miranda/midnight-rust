@@ -9,6 +9,7 @@ pub use r#loop::*;
 
 use std::{rc::Rc, cell::RefCell};
 use crate::{
+    input::Input,
     rendering::GraphicAdapter,
     time::Time,
     window::Window,
@@ -19,6 +20,7 @@ pub struct ApplicationState {
     pub time: Time,
     // TODO  is using Rc<RefCell<>> here a good solution?
     pub graphic_adapter: Rc<RefCell<GraphicAdapter>>,
+    pub input: Input,
 }
 
 /*

@@ -1,4 +1,4 @@
-use crate::ecs::{
+use crate::{ecs::{
     component::{
         self,
         //BaseQuery,
@@ -6,7 +6,7 @@ use crate::ecs::{
     },
     system::System,
     FrameState,
-};
+}, base::ApplicationState};
 use crate::input;
 
 #[derive(Default)]
@@ -27,7 +27,7 @@ impl<'a> System for UpdateSystem<'a> {
     fn setup(&mut self) {
     }
 
-    fn input<'q>(&mut self, _query: Self::Query<'q>, _event: &input::DeviceEvent) {
+    fn input<'q>(&mut self, _query: Self::Query<'q>, _state: &mut ApplicationState) {
     }
 
     fn run<'q>(&mut self, _query: Self::Query<'q>, _state: &FrameState) {
