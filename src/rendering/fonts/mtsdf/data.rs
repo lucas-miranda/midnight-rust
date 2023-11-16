@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use serde::Deserialize;
 
-use crate::math::{Rectangle, Vector2};
+use crate::math::{Rectangle, Vector2, Size};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,7 +10,11 @@ pub struct MTSDF {
     pub metrics: Metrics,
 
     #[serde(with = "items")]
-    pub glyphs: HashMap<u32, Glyph>
+    pub glyphs: HashMap<u32, Glyph>,
+
+    #[serde(default)]
+    #[serde(with = "kerning")]
+    pub kerning: HashMap<u32, HashMap<u32, Kerning>>,
 }
 
 #[derive(Deserialize)]
@@ -51,12 +55,12 @@ impl Into<crate::rendering::fonts::glyph::Glyph> for Glyph {
     fn into(self) -> crate::rendering::fonts::glyph::Glyph {
         crate::rendering::fonts::glyph::Glyph {
             source_area: self.atlas_bounds.into(),
-            bearing_x: self.plane_bounds.left,
-            bearing_y: self.plane_bounds.top,
-            width: self.plane_bounds.right - self.plane_bounds.left,
-            height: self.plane_bounds.bottom - self.plane_bounds.top,
-            advance_x: self.advance,
-            advance_y: 0.0,
+            bearing: Vector2::new(self.plane_bounds.left, self.plane_bounds.top),
+            size: Size::new(
+                self.plane_bounds.right - self.plane_bounds.left,
+                self.plane_bounds.bottom - self.plane_bounds.top
+            ),
+            advance: Vector2::new(self.advance, 0.0),
         }
     }
 }
@@ -109,6 +113,59 @@ mod items {
         for item in Vec::<Glyph>::deserialize(deserializer)? {
             map.insert(item.unicode, item);
         }
+        Ok(map)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Kerning {
+    #[serde(rename = "unicode1")]
+    pub unicode_a: u32,
+
+    #[serde(rename = "unicode2")]
+    pub unicode_b: u32,
+
+    pub advance: f32,
+}
+
+mod kerning {
+    use super::Kerning;
+
+    use std::collections::HashMap;
+
+    //use serde::ser::Serializer;
+    use serde::de::{Deserialize, Deserializer};
+
+    /*
+    pub fn serialize<S>(map: &HashMap<u32, Glyph>, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        serializer.collect_seq(map.values())
+    }
+    */
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<HashMap<u32, HashMap<u32, Kerning>>, D::Error>
+        where D: Deserializer<'de>
+    {
+        let mut map: HashMap<u32, HashMap<u32, Kerning>> = HashMap::new();
+
+        for item in Vec::<Kerning>::deserialize(deserializer)? {
+            match map.get_mut(&item.unicode_a) {
+                Some(next_entries) => match next_entries.get_mut(&item.unicode_b) {
+                    Some(_entry) => next_entries.insert(item.unicode_b, item),
+                    None => next_entries.insert(item.unicode_b, item),
+                },
+                None => {
+                    map.insert(item.unicode_a, HashMap::default());
+
+                    map.get_mut(&item.unicode_a)
+                       .unwrap()
+                       .insert(item.unicode_b, item)
+                },
+            };
+        }
+
         Ok(map)
     }
 }

@@ -1,12 +1,9 @@
-use crate::math::Rectangle;
+use crate::math::{Rectangle, Vector2, Size};
 
 #[derive(Debug)]
 pub struct Glyph {
     pub source_area: Rectangle<f64>,
-    pub bearing_x: f64,
-    pub bearing_y: f64,
-    pub width: f64,
-    pub height: f64,
-    pub advance_x: f64,
-    pub advance_y: f64,
+    pub bearing: Vector2<f64>,
+    pub size: Size<f64>,
+    pub advance: Vector2<f64>,
 }

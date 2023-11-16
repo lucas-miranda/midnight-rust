@@ -97,8 +97,6 @@ impl ApplicationLoop for ContinuousLoop {
                     for domain in &mut self.domains {
                         domain.input(&mut state);
                     }
-
-                    state.input.event.take();
                 }
                 winit::event::Event::MainEventsCleared => {
                     let delta_time = state.time.delta(&mut last_update_instant);
