@@ -1,7 +1,7 @@
 use thiserror::Error;
 use miette::Diagnostic;
 
-use super::{
+use crate::rendering::{
     backend::{DrawError, PassError},
     shaders::{BindingsError, Shader}, RenderStateError,
 };

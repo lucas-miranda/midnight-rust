@@ -30,7 +30,7 @@ use crate::{
         DrawBatcher,
         DrawConfig,
         GraphicAdapter,
-        Vertex, VertexPosition,
+        Vertex, VertexPosition, shaders::ShaderInstance,
     },
 };
 
@@ -82,7 +82,7 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
 
         {
             let mut shader = self.default_shader.borrow_mut();
-            let mut uniforms = shader.uniforms_mut();
+            let uniforms = shader.uniforms_mut();
             //uniforms.view = Matrix4x4::ortho(180.0, 0.0, 0.0, 320.0, -100.0, 100.0);
 
             //uniforms.view = self.view;
@@ -96,13 +96,12 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
             Ok(mut draw_command) => {
                 // TODO  use default shader to clear screen
 
-                /*
                 {
                     let shader: std::cell::Ref<dyn ShaderInstance> = self.default_shader.borrow();
-                    draw_command.clear(Color::<u8>::rgb_hex(0x46236E), &shader)
+                    //draw_command.clear::<_, Vertex2D, _>(Color::<u8>::rgb_hex(0x46236E), &shader)
+                    draw_command.clear(Color::<u8>::rgb_hex(0xFF236E), &shader)
                                 .unwrap();
                 }
-                */
 
                 // collects everything into a batcher
                 {

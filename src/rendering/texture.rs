@@ -129,7 +129,7 @@ impl Texture {
                 || config.sampler.mipmap_filter != FilterMode::Nearest;
 
         TextureView {
-            //id: self.id,
+            id: self.id,
             view: texture.create_view(&wgpu::TextureViewDescriptor {
                 label: None,
                 format: None,
@@ -180,7 +180,7 @@ impl Texture {
 }
 
 pub(super) struct TextureView<'a> {
-    //pub id: TextureId,
+    pub id: TextureId,
     pub view: wgpu::TextureView,
     pub sampler: wgpu::SamplerDescriptor<'a>,
     pub sample_count: u32,

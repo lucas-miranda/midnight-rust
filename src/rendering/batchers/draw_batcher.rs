@@ -5,11 +5,10 @@ use std::{
     rc::Rc,
 };
 
-use super::{
+use crate::rendering::{
     backend::DrawCommand,
     shaders::{ Shader, ShaderInstance },
     texture::TextureId,
-    DrawBatcherError,
     DrawConfig,
     RenderState,
     RenderStateError,
@@ -19,6 +18,8 @@ use super::{
     TextureView,
     Vertex,
 };
+
+use super::DrawBatcherError;
 
 pub struct DrawBatcher<'a, 'r, V: Vertex> {
     batches: HashMap<Shader, ShaderBatch<'a, V>>,
@@ -74,11 +75,11 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     }
 
     pub fn flush(mut self) -> Result<(), DrawBatcherError> {
-        //println!("-> Flushing...");
+        println!("-> Flushing...");
         for (shader_id, batch) in self.batches.drain() {
-            //println!("-> With shader id {}", _shader_id);
+            println!("-> With shader id {}", shader_id);
             for ((_texture_id, shader_config, _texture_config), group) in batch.groups {
-                //println!("-> Group");
+                println!("-> Group");
                 let shader = batch.instance.borrow();
                 let mut pass = self.draw_command.begin(&shader, &shader_config, None)?;
 
@@ -86,13 +87,13 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
                     let bindings = pass.bindings();
 
                     if let Some(texture_view) = group.texture_view {
-                        //println!("-> With texture ({})", texture_view.id);
+                        println!("-> With texture ({})", texture_view.id);
                         bindings.texture_view(texture_view)
                                 .map_err(|e| DrawBatcherError::Bindings(e, shader_id))?;
                     }
                 }
 
-                //println!("Vertex count: {}", group.vertices.len());
+                println!("Vertex count: {}", group.vertices.len());
                 pass.extend(
                     group.vertices.iter(),
                     None,
@@ -107,7 +108,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
             }
         }
 
-        //println!("----------------\n");
+        println!("----------------\n");
         Ok(())
     }
 }

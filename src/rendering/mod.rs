@@ -1,4 +1,5 @@
 pub mod backend;
+pub mod batchers;
 pub mod fonts;
 pub mod graphics;
 pub mod shaders;
@@ -11,12 +12,6 @@ pub use graphic_adapter_init_error::GraphicAdapterInitError;
 
 mod draw_config;
 pub use draw_config::*;
-
-mod draw_batcher;
-pub use draw_batcher::DrawBatcher;
-
-mod draw_batcher_error;
-pub use draw_batcher_error::DrawBatcherError;
 
 mod color;
 pub use color::Color;

@@ -6,7 +6,7 @@ use crate::rendering::{
         Bindings,
         ShaderInstance,
     },
-    Color, ShaderConfig, Vertex,
+    Color, ShaderConfig, Vertex, Vertex2D,
 };
 
 use super::{ DrawError, RenderPass, RenderPresentationSurface };
@@ -85,12 +85,11 @@ impl<'a> DrawCommand<'a> {
         self.surface_texture.present();
     }
 
-    pub fn clear<'p, C, V, S>(&'p mut self, color: C, shader: &'p S) -> Result<(), DrawError> where
+    pub fn clear<'p, C, S>(&'p mut self, color: C, shader: &'p S) -> Result<(), DrawError> where
         C: Into<Color<f32>>,
-        V: Vertex,
         S: Deref<Target = dyn ShaderInstance>,
     {
-        match self.begin::<V, _>(shader, &ShaderConfig::default(), None) {
+        match self.begin::<Vertex2D, _>(shader, &ShaderConfig::default(), None) {
             Ok(pass) => pass.clear_color(color).submit().map_err(DrawError::from),
             Err(e) => Err(e),
         }

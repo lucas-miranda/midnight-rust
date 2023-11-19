@@ -87,12 +87,10 @@ impl<'a, V: Vertex> RenderPass<'a, V> {
         // create wgpu render pass and submit
 
         {
-            /*
             let load = match self.clear_color {
                 Some(clear_color) => wgpu::LoadOp::Clear(clear_color.into()),
                 None => wgpu::LoadOp::Load,
             };
-            */
 
             let mut pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
@@ -100,7 +98,7 @@ impl<'a, V: Vertex> RenderPass<'a, V> {
                     view: self.surface_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load,
                         store: true,
                     },
                 })],
