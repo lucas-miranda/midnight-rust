@@ -62,3 +62,58 @@ impl<'a, T, U> BaseQuery for (T, U) where
         )
     }
 }
+
+impl<'a, T, U, V> BaseQuery for (T, U, V) where
+    T: BaseQuery,
+    U: BaseQuery,
+    V: BaseQuery,
+{
+    type Target<'t> = (Option<T::Target<'t>>, Option<U::Target<'t>>, Option<V::Target<'t>>) where T: 't, U: 't, V: 't;
+
+    fn capture_components(&mut self, components: &Components) {
+        self.0.capture_components(components);
+        self.1.capture_components(components);
+        self.2.capture_components(components);
+    }
+
+    fn iter_components<'i>(
+        &'i self
+    ) -> ComponentQueryIterator<'i, QueryEntry<Self::Target<'i>>> {
+        ComponentQueryIterator::new(
+            self.0.iter_components()
+            .map(|entry_a| {
+                for entry_b in self.1.iter_components() {
+                    if entry_b.entity_id().eq(entry_a.entity_id()) {
+                        for entry_c in self.2.iter_components() {
+                            if entry_c.entity_id().eq(entry_a.entity_id()) {
+                                return QueryEntry::new(
+                                    entry_a.entity_id().clone(),
+                                    (Some(entry_a.component), Some(entry_b.component), Some(entry_c.component)),
+                                );
+                            }
+                        }
+
+                        return QueryEntry::new(
+                            entry_a.entity_id().clone(),
+                            (Some(entry_a.component), Some(entry_b.component), None),
+                        );
+                    }
+                }
+
+                for entry_c in self.2.iter_components() {
+                    if entry_c.entity_id().eq(entry_a.entity_id()) {
+                        return QueryEntry::new(
+                            entry_a.entity_id().clone(),
+                            (Some(entry_a.component), None, Some(entry_c.component)),
+                        );
+                    }
+                }
+
+                return QueryEntry::new(
+                    entry_a.entity_id().clone(),
+                    (Some(entry_a.component), None, None),
+                );
+            })
+        )
+    }
+}
