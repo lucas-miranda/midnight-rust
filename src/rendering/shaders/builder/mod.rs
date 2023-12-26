@@ -79,6 +79,10 @@ impl ShaderBuilder {
         &self.resources
     }
 
+    pub fn get_instance(&self, shader: &Shader) -> Option<&Weak<RefCell<dyn ShaderInstance>>> {
+        self.instances.get(shader)
+    }
+
     pub fn instances(&self) -> &HashMap<Shader, Weak<RefCell<dyn ShaderInstance>>> {
         &self.instances
     }

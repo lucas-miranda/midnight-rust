@@ -13,4 +13,7 @@ pub enum RenderStateError {
 
     #[error("bindings failed: {0}")]
     Bindings(#[from] BindingsError),
+
+    #[error("Shader ({0:?}) instance not found.")]
+    ShaderInstanceNotFound(Shader),
 }

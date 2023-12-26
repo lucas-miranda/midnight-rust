@@ -26,11 +26,13 @@ use crate::{
         Vector2,
     },
     rendering::{
+        batchers::DrawBatcher,
+        shaders::ShaderInstance,
         Color,
-        DrawBatcher,
         DrawConfig,
         GraphicAdapter,
-        Vertex, VertexPosition, shaders::ShaderInstance,
+        Vertex,
+        VertexPosition,
     },
 };
 
