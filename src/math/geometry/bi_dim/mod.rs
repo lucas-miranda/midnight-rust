@@ -7,4 +7,5 @@ pub use vector2::*;
 mod rectangle;
 pub use rectangle::*;
 
-pub type Size<T> = Vector2<T>;
+mod size2;
+pub use size2::*;

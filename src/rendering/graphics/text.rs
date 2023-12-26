@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, any::Any};
 
 use crate::{
-    math::{Vector2, Rectangle},
+    math::{Vector2, Rectangle, Size2},
     rendering::{
         fonts::{Font, FontRendering},
         VertexPosition,

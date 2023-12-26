@@ -16,6 +16,8 @@ use crate::math::num_traits::{
     Num,
 };
 
+use super::Size2;
+
 /// Describes a point on a bi-dimensional space.
 /// Shorthand to Vector2<T>.
 pub type Point<T> = Vector2<T>;
@@ -403,6 +405,17 @@ impl<T> From<&[T; 2]> for Vector2<T> where
         Self {
             x: slice[0],
             y: slice[1],
+        }
+    }
+}
+
+impl<T> From<Size2<T>> for Vector2<T> where
+    T: Num + Copy
+{
+    fn from(s: Size2<T>) -> Self {
+        Self {
+            x: s.width,
+            y: s.height,
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use serde::Deserialize;
 
-use crate::math::{Rectangle, Vector2, Size};
+use crate::math::{Rectangle, Vector2, Size2};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,7 +56,7 @@ impl Into<crate::rendering::fonts::glyph::Glyph> for Glyph {
         crate::rendering::fonts::glyph::Glyph {
             source_area: self.atlas_bounds.into(),
             bearing: Vector2::new(self.plane_bounds.left, self.plane_bounds.top),
-            size: Size::new(
+            size: Size2::new(
                 self.plane_bounds.right - self.plane_bounds.left,
                 self.plane_bounds.bottom - self.plane_bounds.top
             ),

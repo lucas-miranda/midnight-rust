@@ -1,5 +1,5 @@
 use std::slice::Iter;
-use crate::math::{Vector2, Rectangle, Size};
+use crate::math::{Vector2, Rectangle, Size2};
 
 use super::Glyph;
 
@@ -47,7 +47,7 @@ pub struct RenderGlyph {
     // from fonts::Glyph
     pub source_area: Rectangle<f64>,
     pub bearing: Vector2<f64>,
-    pub size: Size<f64>,
+    pub size: Size2<f64>,
     pub advance: Vector2<f64>,
 }
 

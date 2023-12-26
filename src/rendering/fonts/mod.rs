@@ -18,7 +18,7 @@ use std::{
 };
 
 use unicode_segmentation::UnicodeSegmentation;
-use crate::math::{Size, Vector2};
+use crate::math::{Size2, Vector2};
 
 use super::Texture;
 
@@ -46,7 +46,7 @@ impl<R: FontRendering> Font<R> {
         self.glyphs.get(&unicode)
     }
 
-    pub fn build_text<T: AsRef<str>>(&self, text: T) -> (TextRenderData, Size<f64>) {
+    pub fn build_text<T: AsRef<str>>(&self, text: T) -> (TextRenderData, Size2<f64>) {
         let graphemes: Vec<&str> = text.as_ref()
             .graphemes(true)
             .collect();
@@ -58,7 +58,7 @@ impl<R: FontRendering> Font<R> {
                                    .unwrap();
 
         let mut output = TextRenderData::new(graphemes.len() + extra_space);
-        let mut text_em = Size::default();
+        let mut text_em = Size2::default();
 
         let mut pen = Vector2::new(0.0f64, self.rendering.ascender().abs() as f64);
         let mut end_of_line = false;
@@ -150,8 +150,8 @@ impl<R: FontRendering> Font<R> {
             if end_of_line {
                 end_of_line = false;
 
-                if pen.x > text_em.x {
-                    text_em.x = pen.x;
+                if pen.x > text_em.width {
+                    text_em.width = pen.x;
                 }
 
                 pen.x = 0.0;
@@ -160,7 +160,7 @@ impl<R: FontRendering> Font<R> {
             i += 1;
         }
 
-        text_em.y = pen.y.abs() + self.rendering.descender() as f64;
+        text_em.height = pen.y.abs() + self.rendering.descender() as f64;
 
         (output, text_em)
     }

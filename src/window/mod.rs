@@ -5,6 +5,8 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
 };
 
+use crate::math::Size2;
+
 pub struct WindowEventHandler {
     control_flow: ControlFlow,
 }
