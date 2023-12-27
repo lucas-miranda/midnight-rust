@@ -108,6 +108,17 @@ impl Window {
     pub fn request_redraw(&self) {
         self.internal_window.request_redraw();
     }
+
+    pub fn scale_factor(&self) -> f64 {
+        self.internal_window.scale_factor()
+    }
+
+    pub fn inner_size(&self) -> Size2<u32> {
+        self.internal_window
+            .inner_size()
+            .to_logical(self.scale_factor())
+            .into()
+    }
 }
 
 unsafe impl HasRawWindowHandle for Window {

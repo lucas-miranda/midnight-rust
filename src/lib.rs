@@ -1,6 +1,7 @@
 pub mod base;
 pub mod components;
 pub mod ecs;
+pub mod entities;
 pub mod input;
 pub mod math;
 pub mod rendering;
