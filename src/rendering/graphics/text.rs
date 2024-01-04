@@ -63,7 +63,7 @@ impl<R, V> Text<R, V> where
     }
 
     pub fn px_size(&self) -> Size2<f32> {
-        (self.em_size() * self.font.size as f64).convert()
+        (self.em_size() * self.font.size() as f64).convert()
     }
 
     pub fn change_value(&mut self, new_text: String) {
@@ -109,7 +109,7 @@ impl<R, V> Graphic<V> for Text<R, V> where
         if let Some(ref render_data) = self.render_data {
             let mut vertices = Vec::with_capacity(render_data.len() * 3 * 2); // 3 vertices by 2 tri
 
-            let font_size_ratio = self.font.size / self.font.rendering.nominal_width();
+            let font_size_ratio = self.font.size() / self.font.rendering.nominal_width();
 
             for render_glyph in render_data {
                 let glyph_size: Vector2<f32> = render_glyph.source_area.size.convert().into();
@@ -120,7 +120,7 @@ impl<R, V> Graphic<V> for Text<R, V> where
                     (glyph_size / texture_size).into(),
                 );
 
-                let pos = (render_glyph.position * self.font.size as f64).convert();
+                let pos = (render_glyph.position * self.font.size() as f64).convert();
 
                 vertices.extend_from_slice(&[
                     /*

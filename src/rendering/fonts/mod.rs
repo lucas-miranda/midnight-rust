@@ -14,7 +14,7 @@ pub use text_render_data::*;
 
 use std::{
     collections::HashMap,
-    fmt::Display,
+    fmt::Display, path::Path,
 };
 
 use unicode_segmentation::UnicodeSegmentation;
@@ -28,7 +28,8 @@ const WHITESPACE_GRAPHEME: Grapheme = Grapheme::Indirect(" ");
 pub struct Font<R: FontRendering> {
     pub rendering: R,
     pub glyphs: HashMap<u32, Glyph>,
-    pub size: f32,
+
+    size: f32,
 }
 
 impl<R: FontRendering> Font<R> {
@@ -40,6 +41,16 @@ impl<R: FontRendering> Font<R> {
             glyphs,
             size: 32.0,
         }
+    }
+
+    pub fn size(&self) -> f32 {
+        self.size
+    }
+
+    pub fn with_size(mut self, size: f32) -> Self {
+        self.size = size;
+
+        self
     }
 
     pub fn glyph(&self, unicode: u32) -> Option<&Glyph> {
@@ -189,6 +200,12 @@ impl<R: FontRendering> Font<R> {
         } else {
             (grapheme, 1)
         }
+    }
+}
+
+impl Font<MTSDFFontRendering> {
+    pub fn load_mtsdf<P: AsRef<Path>>(font_texture: Texture, data_filepath: P) -> Self {
+        Self::new(MTSDFFontRendering::load(font_texture, data_filepath))
     }
 }
 

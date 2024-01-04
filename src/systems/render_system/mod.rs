@@ -37,13 +37,14 @@ use crate::{
 };
 
 pub struct RenderSystem<V: Vertex> {
-    graphic_adapter: Weak<RefCell<GraphicAdapter>>,
-    default_shader: Rc<RefCell<DefaultShader>>,
-    phantom: PhantomData<V>,
-
     //pub world: Matrix4x4<f32>,
     pub view: Matrix4x4<f32>,
     //pub projection: Matrix4x4<f32>,
+
+    graphic_adapter: Weak<RefCell<GraphicAdapter>>,
+    default_shader: Rc<RefCell<DefaultShader>>,
+    clear_color: Color::<f32>,
+    phantom: PhantomData<V>,
 }
 
 impl<V: Vertex> RenderSystem<V> {
@@ -52,9 +53,15 @@ impl<V: Vertex> RenderSystem<V> {
             graphic_adapter: Rc::downgrade(graphic_adapter),
             default_shader: DefaultShader::new(&graphic_adapter),
             phantom: Default::default(),
-
+            clear_color: 0xFF236EFF.into(),
             view: Matrix4x4::default(),
         }
+    }
+
+    pub fn with_clear_color<C: Into<Color<f32>>>(mut self, color: C) -> Self {
+        self.clear_color = color.into();
+
+        self
     }
 }
 
@@ -101,7 +108,7 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
                 {
                     let shader: std::cell::Ref<dyn ShaderInstance> = self.default_shader.borrow();
                     //draw_command.clear::<_, Vertex2D, _>(Color::<u8>::rgb_hex(0x46236E), &shader)
-                    draw_command.clear(Color::<u8>::rgb_hex(0xFF236E), &shader)
+                    draw_command.clear(self.clear_color, &shader)
                                 .unwrap();
                 }
 

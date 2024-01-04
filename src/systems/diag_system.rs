@@ -46,14 +46,12 @@ impl System for DiagSystem {
     fn run<'q>(&mut self, query: Self::Query<'q>, state: &FrameState) {
         self.frame_count += 1;
         self.remaining_duration = self.remaining_duration.saturating_sub(state.delta.duration);
-        //println!("delta: {}, remaining: {}", state.delta.duration.as_millis(), self.remaining_duration.as_millis());
 
         if self.remaining_duration.is_zero() {
             // frame count completed
             self.fps = self.frame_count;
             self.frame_count = 0;
             self.remaining_duration = Duration::from_secs(1);
-            //println!("fps: {}", self.fps);
         }
 
         for QueryEntry { component: (a, b, c), .. } in query.iter_components() {
@@ -65,13 +63,17 @@ impl System for DiagSystem {
                     if let Some(ref mut g) = graphic_displayer.graphic {
                         let text: &mut Text<MTSDFFontRendering, Vertex2DTexture> = g.as_any_mut().downcast_mut().unwrap();
 
-                        //text.text = self.frame_count.to_string();
                         text.change_value(self.fps.to_string());
 
                         // reposition
                         if let Some(mut transform) = c {
                             let window_size = state.app.main_window.inner_size();
-                            transform.local_position = Vector2::new(window_size.width as f32 - text.px_size().width, 8 as f32).convert()
+
+                            transform.local_position
+                                = Vector2::new(
+                                    window_size.width as f32 - text.px_size().width,
+                                    8 as f32
+                                ).convert()
                         }
                     }
                 }

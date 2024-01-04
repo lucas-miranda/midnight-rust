@@ -14,11 +14,9 @@ use crate::{
         fonts::{
             mtsdf::MTSDFShader,
             Font,
-            MTSDFFontRendering,
         },
         graphics::Text,
         AddressMode,
-        Color,
         FilterMode,
         GraphicAdapter,
         PrimitiveState,
@@ -52,7 +50,7 @@ pub fn create(
             //let font_size = 32.0;
 
             let uniforms = shader.uniforms_mut();
-            uniforms.color = Color::<f32>::rgb_hex(0xFF00FF);
+            uniforms.color = 0xFF00FFFF.into();
             //uniforms.screen_px_range = ((font_scale * font_size) / font_base_size) * px_distance_range;
             //let unit_range = Vector2::new(px_distance_range, px_distance_range) / 256.0f32;
             uniforms.screen_px_range = distance_range;
@@ -89,9 +87,8 @@ pub fn create(
         ).unwrap();
 
         let data_filepath = PathBuf::from(r"fonts/baby-data.json");
-        let font = Font::new(MTSDFFontRendering::load(font_texture, data_filepath));
+        let font = Font::load_mtsdf(font_texture, data_filepath).with_size(16.0);
         let text = Text::new(font);
-        //String::from("--"),
 
         graphic_displayer.graphic = Some(Box::new(text));
 

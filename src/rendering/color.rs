@@ -97,6 +97,12 @@ impl Color<u8> {
     }
 }
 
+impl From<u32> for Color<u8> {
+    fn from(rgba: u32) -> Self {
+        Self::rgba_hex(rgba)
+    }
+}
+
 impl From<Color<u8>> for wgpu::Color {
     fn from(c: Color<u8>) -> Self {
         Self {
@@ -148,20 +154,20 @@ macro_rules! impl_float {
                 }
             }
 
-            pub const fn rgba_hex(rgba: u32) -> Self {
+            pub fn rgba_hex(rgba: u32) -> Self {
                 Self {
-                    r: ((rgba & 0xFF000000) >> 24) as $type,
-                    g: ((rgba & 0x00FF0000) >> 16) as $type,
-                    b: ((rgba & 0x0000FF00) >> 8) as $type,
-                    a: (rgba & 0x000000FF) as $type,
+                    r: ((rgba & 0xFF000000) >> 24) as $type / 255.0,
+                    g: ((rgba & 0x00FF0000) >> 16) as $type / 255.0,
+                    b: ((rgba & 0x0000FF00) >> 8) as $type / 255.0,
+                    a: (rgba & 0x000000FF) as $type / 255.0,
                 }
             }
 
-            pub const fn rgb_hex(rgb: u32) -> Self {
+            pub fn rgb_hex(rgb: u32) -> Self {
                 Self {
-                    r: ((rgb & 0xFF0000) >> 16) as $type,
-                    g: ((rgb & 0x00FF00) >> 8) as $type,
-                    b: (rgb & 0x0000FF) as $type,
+                    r: ((rgb & 0xFF0000) >> 16) as $type / 255.0,
+                    g: ((rgb & 0x00FF00) >> 8) as $type / 255.0,
+                    b: (rgb & 0x0000FF) as $type / 255.0,
                     a: 1.0,
                 }
             }
@@ -197,6 +203,12 @@ macro_rules! impl_float {
                     b: c.b.into(),
                     a: c.a.into(),
                 }
+            }
+        }
+
+        impl From<u32> for Color<$type> {
+            fn from(rgba: u32) -> Self {
+                Self::rgba_hex(rgba)
             }
         }
     )+}
