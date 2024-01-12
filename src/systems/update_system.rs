@@ -30,7 +30,7 @@ impl<'a> System for UpdateSystem<'a> {
     fn input<'q>(&mut self, _query: Self::Query<'q>, _state: &mut ApplicationState) {
     }
 
-    fn run<'q>(&mut self, _query: Self::Query<'q>, _state: &FrameState) {
+    fn run<'q>(&mut self, _query: Self::Query<'q>, _state: &mut FrameState) {
         //println!("[UpdateSystem] {} captured components", query.count());
 
         //for component_ref in query.iter_components() {

@@ -43,7 +43,7 @@ impl System for DiagSystem {
     fn input<'q>(&mut self, _query: Self::Query<'q>, _state: &mut ApplicationState) {
     }
 
-    fn run<'q>(&mut self, query: Self::Query<'q>, state: &FrameState) {
+    fn run<'q>(&mut self, query: Self::Query<'q>, state: &mut FrameState) {
         self.frame_count += 1;
         self.remaining_duration = self.remaining_duration.saturating_sub(state.delta.duration);
 
@@ -63,7 +63,13 @@ impl System for DiagSystem {
                     if let Some(ref mut g) = graphic_displayer.graphic {
                         let text: &mut Text<MTSDFFontRendering, Vertex2DTexture> = g.as_any_mut().downcast_mut().unwrap();
 
-                        text.change_value(self.fps.to_string());
+                        text.change_value(format!(
+                            "{}\nu: {:.4}\nr: {:.4}\ndc: {}",
+                            self.fps.to_string(),
+                            state.app.diagnostics.update_timer.as_secs_f32(),
+                            state.app.diagnostics.render_timer.as_secs_f32(),
+                            state.app.diagnostics.draw_calls,
+                        ));
 
                         // reposition
                         if let Some(mut transform) = c {

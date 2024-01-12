@@ -70,6 +70,7 @@ impl ApplicationLoop for ContinuousLoop {
             time,
             graphic_adapter: Rc::new(RefCell::new(graphic_adapter)),
             input: Input::default(),
+            diagnostics: Default::default(),
         };
 
         // setup all domains
@@ -100,27 +101,35 @@ impl ApplicationLoop for ContinuousLoop {
                 }
                 winit::event::Event::MainEventsCleared => {
                     let delta_time = state.time.delta(&mut last_update_instant);
-                    let frame_state = FrameState {
+                    let mut frame_state = FrameState {
                         delta: delta_time,
-                        app: &state,
+                        app: &mut state,
                     };
 
+                    let update_timer_instant = Time::now();
+
                     for domain in &mut self.domains {
-                        domain.update(&frame_state);
+                        domain.update(&mut frame_state);
                     }
 
+                    state.diagnostics.update_timer = Time::now() - update_timer_instant;
                     state.main_window.request_redraw();
                 },
                 winit::event::Event::RedrawRequested(_) => {
                     let delta_time = state.time.delta(&mut last_render_instant);
-                    let frame_state = FrameState {
+                    state.diagnostics.draw_calls = 0; // TODO  handle this line properly
+                    let mut frame_state = FrameState {
                         delta: delta_time,
-                        app: &state,
+                        app: &mut state,
                     };
 
+                    let render_timer_instant = Time::now();
+
                     for domain in &mut self.domains {
-                        domain.render(&frame_state);
+                        domain.render(&mut frame_state);
                     }
+
+                    state.diagnostics.render_timer = Time::now() - render_timer_instant;
                 },
                 _ => ()
             }

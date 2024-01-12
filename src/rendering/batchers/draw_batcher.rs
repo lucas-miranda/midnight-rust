@@ -72,6 +72,10 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     }
     */
 
+    pub fn batch_count(&self) -> usize {
+        self.batches.len()
+    }
+
     pub fn shader_instances<'i>(
         &'i self
     ) -> impl Iterator<Item = Ref<'i, (dyn ShaderInstance + 'static)>> {

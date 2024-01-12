@@ -12,6 +12,7 @@ use std::{
     rc::Rc,
 };
 use crate::{
+    diag::Diagnostics,
     input::Input,
     rendering::GraphicAdapter,
     time::Time,
@@ -23,6 +24,7 @@ pub struct ApplicationState {
     pub time: Time,
     pub graphic_adapter: Rc<RefCell<GraphicAdapter>>,
     pub input: Input,
+    pub diagnostics: Diagnostics,
 }
 
 /*

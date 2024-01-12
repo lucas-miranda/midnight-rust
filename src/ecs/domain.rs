@@ -9,6 +9,6 @@ use super::FrameState;
 pub trait Domain {
     fn setup(&mut self, app_state: &mut ApplicationState, window_context: &mut WindowContext);
     fn input(&mut self, app_state: &mut ApplicationState);
-    fn update<'u>(&'u mut self, state: &'u FrameState);
-    fn render<'r>(&'r mut self, state: &'r FrameState);
+    fn update<'u>(&'u mut self, state: &'u mut FrameState);
+    fn render<'r>(&'r mut self, state: &'r mut FrameState);
 }

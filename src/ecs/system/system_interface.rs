@@ -13,7 +13,7 @@ pub struct SystemInterface {
     system: Box<dyn Any>,
     setup_fn: Box<dyn FnMut(&mut Box<dyn Any>)>,
     input_fn: Box<dyn FnMut(&mut Box<dyn Any>, EntitiesIter<'_>, &mut ApplicationState)>,
-    run_fn: Box<dyn FnMut(&mut Box<dyn Any>, EntitiesIter<'_>, &FrameState<'_>)>,
+    run_fn: Box<dyn FnMut(&mut Box<dyn Any>, EntitiesIter<'_>, &mut FrameState<'_>)>,
 }
 
 impl SystemInterface {
@@ -56,7 +56,7 @@ impl SystemInterface {
         (*self.input_fn)(&mut self.system, entities, app_state)
     }
 
-    pub fn run(&mut self, entities: EntitiesIter<'_>, state: &FrameState) {
+    pub fn run(&mut self, entities: EntitiesIter<'_>, state: &mut FrameState) {
         (*self.run_fn)(&mut self.system, entities, state)
     }
 }

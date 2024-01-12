@@ -8,8 +8,7 @@ pub mod system;
 
 use crate::{time::DeltaTime, base::ApplicationState};
 
-#[derive(Clone)]
 pub struct FrameState<'a> {
     pub delta: DeltaTime,
-    pub app: &'a ApplicationState,
+    pub app: &'a mut ApplicationState,
 }

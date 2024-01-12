@@ -10,6 +10,6 @@ pub trait System {
 
     fn setup(&mut self);
     fn input<'q>(&mut self, query: Self::Query<'q>, state: &mut ApplicationState);
-    fn run<'q>(&mut self, query: Self::Query<'q>, state: &FrameState);
+    fn run<'q>(&mut self, query: Self::Query<'q>, state: &mut FrameState);
     fn create_query<'q>(&self) -> Self::Query<'q>;
 }

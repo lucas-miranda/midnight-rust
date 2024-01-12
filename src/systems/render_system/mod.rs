@@ -77,7 +77,7 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
     fn input<'q>(&mut self, _query: Self::Query<'q>, _state: &mut ApplicationState) {
     }
 
-    fn run<'q>(&mut self, query: Self::Query<'q>, _state: &FrameState) {
+    fn run<'q>(&mut self, query: Self::Query<'q>, state: &mut FrameState) {
         /*
         println!(
             "[RenderSystem] captured components({}): {} GraphicDisplayer, {} Transform",
@@ -145,6 +145,8 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
                             }
                         }
                     }
+
+                    state.app.diagnostics.draw_calls += draw_batcher.batch_count();
 
                     {
                         // update world view projection matrices for every shader in-use
