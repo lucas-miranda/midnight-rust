@@ -1,25 +1,28 @@
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+mod window_error;
+pub use window_error::WindowError;
+
+use raw_window_handle::{ HasRawDisplayHandle, HasRawWindowHandle };
 
 use winit::{
-    dpi::{LogicalSize, PhysicalSize},
-    event_loop::{ControlFlow, EventLoop},
+    dpi::{ LogicalSize, PhysicalSize },
+    event_loop::{ ControlFlow, EventLoop },
 };
 
 use crate::math::Size2;
 
 pub struct WindowEventHandler {
-    control_flow: ControlFlow,
+    pub(super) close_requested: bool
 }
 
 impl WindowEventHandler {
     pub fn new() -> Self {
         Self {
-            control_flow: ControlFlow::Poll,
+            close_requested: false
         }
     }
 
     pub fn request_close(&mut self) {
-        self.control_flow = ControlFlow::Exit
+        self.close_requested = true
     }
 }
 
@@ -29,11 +32,11 @@ pub struct WindowContext {
 }
 
 impl WindowContext {
-    pub fn new() -> Self {
-        Self {
-            event_loop: EventLoop::new(),
+    pub fn new() -> Result<Self, winit::error::EventLoopError> {
+        Ok(Self {
+            event_loop: EventLoop::new()?,
             event_handler: WindowEventHandler::new(),
-        }
+        })
     }
 
     pub fn create_window(&self) -> WindowBuilder {
@@ -55,11 +58,17 @@ impl WindowContext {
         (logical, physical)
     }
 
-    pub fn run<F: 'static + FnMut(winit::event::Event<()>, &mut WindowEventHandler)>(mut self, mut handler: F) {
-        self.event_loop.run(move |event, _event_window_target, control_flow| {
+    pub fn run<F>(mut self, mut handler: F) -> Result<(), WindowError>
+        where F: 'static + FnMut(winit::event::Event<()>, &mut WindowEventHandler)
+    {
+        self.event_loop.set_control_flow(ControlFlow::Poll);
+        self.event_loop.run(move |event, event_window_target| {
             handler(event, &mut self.event_handler);
-            *control_flow = self.event_handler.control_flow;
-        });
+
+            if self.event_handler.close_requested {
+                event_window_target.exit();
+            }
+        }).map_err(WindowError::from)
     }
 }
 

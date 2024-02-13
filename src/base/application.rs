@@ -9,13 +9,16 @@ pub struct Application {
 impl Application {
     pub fn run<L: 'static + ApplicationLoop>(&mut self) -> Result<(), ApplicationError> {
         Self::display_header();
-        let mut loop_control = L::new(WindowContext::new());
+        let mut loop_control = L::new(
+                WindowContext::new()
+                    .map_err(ApplicationError::WindowCreationFailed)?
+            );
 
         for domain in self.domains.drain(..) {
             loop_control.register_domain(domain);
         }
 
-        loop_control.run();
+        loop_control.run()?;
 
         Ok(())
     }

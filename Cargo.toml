@@ -15,8 +15,8 @@ shader-wgsl = ["wgpu/wgsl"]
 
 [dependencies]
 # window
-winit = "0.28.3"
-raw-window-handle = "0.5.1"
+winit = { version = "0.29.10", features = ["rwh_05"] }
+raw-window-handle = "0.5.2"
 
 # gpu
 wgpu = { version = "0.15.1", features = ["spirv"] }

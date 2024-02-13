@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    base::ApplicationState,
+    base::{ApplicationState, ApplicationError},
     ecs::{Domain, FrameState},
     input::{Input, Event},
     rendering::GraphicAdapter,
@@ -33,7 +33,7 @@ impl ApplicationLoop for ContinuousLoop {
         self.domains.push(domain.into());
     }
 
-    fn run(mut self) {
+    fn run(mut self) -> Result<(), ApplicationError> {
         let (logical_window_size, physical_window_size)
             = self.window_context.calculate_window_size(
                 (WINDOW_SIZE[0], WINDOW_SIZE[1])
@@ -80,26 +80,43 @@ impl ApplicationLoop for ContinuousLoop {
 
         self.window_context.run(move |event, event_handler| {
             match event {
-                winit::event::Event::WindowEvent {
-                    event: winit::event::WindowEvent::CloseRequested, ..
-                } => {
-                    println!("Window closed by user");
-                    event_handler.request_close();
-                },
-                winit::event::Event::WindowEvent {
-                    event: winit::event::WindowEvent::Resized(dims), ..
-                } => {
-                    println!("Window resized to {:?}", dims);
-                    state.graphic_adapter.borrow_mut().request_resize_surface(dims.width, dims.height);
-                }
-                winit::event::Event::DeviceEvent { event, .. } => {
-                    state.input.event.replace(Event::from(event));
+                winit::event::Event::WindowEvent { event: win_event, .. } => {
+                    match win_event {
+                        winit::event::WindowEvent::CloseRequested => {
+                            println!("Window closed by user");
+                            event_handler.request_close();
+                        },
+                        winit::event::WindowEvent::Resized(dims) => {
+                            println!("Window resized to {:?}", dims);
+                            state.graphic_adapter.borrow_mut().request_resize_surface(dims.width, dims.height);
+                        },
+                        winit::event::WindowEvent::RedrawRequested => {
+                            let delta_time = state.time.delta(&mut last_render_instant);
+                            state.diagnostics.draw_calls = 0; // TODO  handle this line properly
+                            let mut frame_state = FrameState {
+                                delta: delta_time,
+                                app: &mut state,
+                            };
 
-                    for domain in &mut self.domains {
-                        domain.input(&mut state);
+                            let render_timer_instant = Time::now();
+
+                            for domain in &mut self.domains {
+                                domain.render(&mut frame_state);
+                            }
+
+                            state.diagnostics.render_timer = Time::now() - render_timer_instant;
+                        },
+                        _ => {
+                            state.input.handle(Event::from(win_event));
+
+                            for domain in &mut self.domains {
+                                domain.input(&mut state);
+                            }
+                        },
                     }
-                }
-                winit::event::Event::MainEventsCleared => {
+                },
+                winit::event::Event::AboutToWait => {
+                    // TODO  set max wait time to be able to change framerate
                     let delta_time = state.time.delta(&mut last_update_instant);
                     let mut frame_state = FrameState {
                         delta: delta_time,
@@ -115,24 +132,8 @@ impl ApplicationLoop for ContinuousLoop {
                     state.diagnostics.update_timer = Time::now() - update_timer_instant;
                     state.main_window.request_redraw();
                 },
-                winit::event::Event::RedrawRequested(_) => {
-                    let delta_time = state.time.delta(&mut last_render_instant);
-                    state.diagnostics.draw_calls = 0; // TODO  handle this line properly
-                    let mut frame_state = FrameState {
-                        delta: delta_time,
-                        app: &mut state,
-                    };
-
-                    let render_timer_instant = Time::now();
-
-                    for domain in &mut self.domains {
-                        domain.render(&mut frame_state);
-                    }
-
-                    state.diagnostics.render_timer = Time::now() - render_timer_instant;
-                },
                 _ => ()
             }
-        });
+        }).map_err(ApplicationError::from)
     }
 }

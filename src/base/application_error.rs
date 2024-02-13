@@ -1,16 +1,15 @@
-pub use std::error::Error;
-use std::fmt::{self, Display, Formatter};
+use thiserror::Error;
+use miette::Diagnostic;
+use winit::error::EventLoopError;
+
+use crate::window::WindowError;
 
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Error, Diagnostic, Debug)]
 pub enum ApplicationError {
-}
+    #[error("window creation has failed")]
+    WindowCreationFailed(EventLoopError),
 
-impl Error for ApplicationError {
-}
-
-impl Display for ApplicationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "")
-    }
+    #[error("window failed")]
+    WindowError(#[from] WindowError)
 }
