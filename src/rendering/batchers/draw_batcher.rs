@@ -89,10 +89,10 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     }
 
     pub fn flush(mut self) -> Result<(), DrawBatcherError> {
-        println!("-> Flushing...");
+        //println!("-> Flushing...");
         for batch in self.batches.drain(..) {
             let shader_id = batch.instance.borrow().identifier();
-            println!("-> With shader id {}", shader_id);
+            //println!("-> With shader id {}", shader_id);
             let (_texture_id, shader_config, _texture_config) = batch.group.configuration;
 
             //println!("-> Group");
@@ -103,15 +103,15 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
                 let bindings = pass.bindings();
 
                 if let Some(texture_view) = batch.group.texture_view {
-                    println!("-> With texture ({})", texture_view.id);
+                    //println!("-> With texture ({})", texture_view.id);
                     bindings.texture_view(texture_view)
                             .map_err(|e| DrawBatcherError::Bindings(e, shader_id))?;
                 } else {
-                    println!("-> Without texture");
+                    //println!("-> Without texture");
                 }
             }
 
-            println!("Vertex count: {}", batch.group.vertices.len());
+            //println!("Vertex count: {}", batch.group.vertices.len());
             pass.extend(
                 batch.group.vertices.iter(),
                 None,
@@ -125,7 +125,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
             pass.submit().map_err(DrawBatcherError::from)?;
         }
 
-        println!("----------------\n");
+        //println!("----------------\n");
         Ok(())
     }
 
