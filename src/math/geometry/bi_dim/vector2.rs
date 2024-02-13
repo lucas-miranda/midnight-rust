@@ -50,7 +50,16 @@ impl<T> Vector2<T> where
             y,
         }
     }
+
+    pub fn zero() -> Self {
+        Vector2::new(T::zero(), T::zero())
+    }
+
+    pub fn one() -> Self {
+        Vector2::new(T::one(), T::one())
+    }
 }
+
 
 impl<T> Vector2<T> where
     T: Num + NumCast
