@@ -1,9 +1,8 @@
-use std::{marker::PhantomData, any::Any};
+use std::{marker::PhantomData, any::Any, rc::{Weak, Rc}};
 
 use crate::{
-    math::Vector2,
+    math::{Vector2, Size2},
     rendering::{VertexPosition, VertexTexture2D},
-    util::Size,
 };
 
 use super::{
@@ -17,26 +16,28 @@ use super::{
 pub struct Tilemap<V: VertexPosition<Position = Vector2<f32>>> {
     pub columns: u32,
     pub rows: u32,
-    pub tile_size: Size<u32>,
-    pub tileset: Texture,
+    pub tile_size: Size2<u32>,
+    pub tileset: Weak<Texture>,
+    pub tileset_size: Size2<u32>,
     pub tiles: Vec<u32>,
     pub phantom: PhantomData<V>,
 }
 
 impl<V: VertexPosition<Position = Vector2<f32>>> Tilemap<V> {
-    pub fn new(columns: u32, rows: u32, tile_size: Size<u32>, tileset: Texture) -> Self {
+    pub fn new(columns: u32, rows: u32, tile_size: Size2<u32>, tileset: Rc<Texture>) -> Self {
         Self {
             columns,
             rows,
             tile_size,
-            tileset,
+            tileset: Rc::downgrade(&tileset),
+            tileset_size: tileset.size(),
             tiles: Vec::new(),
             phantom: Default::default(),
         }
     }
 
     pub fn set_tiles_coord(&mut self, tiles: Vec<Vector2<u32>>) {
-        let tileset_columns = self.tileset.width() / self.tile_size.width;
+        let tileset_columns = self.tileset_size.width / self.tile_size.width;
 
         self.tiles = tiles.into_iter()
                           .map(|t| t.y * tileset_columns + t.x)
@@ -47,10 +48,6 @@ impl<V: VertexPosition<Position = Vector2<f32>>> Tilemap<V> {
 impl<V> Graphic<V> for Tilemap<V> where
     V: VertexPosition<Position = Vector2<f32>> + VertexTexture2D,
 {
-    fn texture<'t>(&'t self) -> Option<&'t Texture> {
-        Some(&self.tileset)
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -64,12 +61,12 @@ impl<V> Graphic<V> for Tilemap<V> where
         draw_config: DrawConfig<V>,
     ) -> Result<(), GraphicDrawError>{
         let mut vertices = Vec::with_capacity(((self.columns * 2) * (self.rows * 2)) as usize);
-        let tile_size: Size<f32> = Size::with(self.tile_size.width, self.tile_size.height).unwrap();
+        let tile_size: Size2<f32> = Size2::with(self.tile_size.width, self.tile_size.height).unwrap();
 
-        let tileset_columns = self.tileset.width() / self.tile_size.width;
+        let tileset_columns = self.tileset_size.width / self.tile_size.width;
         //let tileset_rows = self.tileset.height() / self.tile_size.height;
 
-        let tileset_tile_uv_size = tile_size / Size::<f32>::with(self.tileset.width(), self.tileset.height()).unwrap();
+        let tileset_tile_uv_size = tile_size / Size2::<f32>::with(self.tileset_size.width, self.tileset_size.height).unwrap();
 
         // rows lines
         (0..self.rows).for_each(|r| {
@@ -85,8 +82,8 @@ impl<V> Graphic<V> for Tilemap<V> where
                 let g_y = gid / tileset_columns;
 
                 let uv = Vector2::new(
-                    (g_x as f32) * tile_size.width / (self.tileset.width() as f32),
-                    (g_y as f32) * tile_size.height / (self.tileset.height() as f32)
+                    (g_x as f32) * tile_size.width / (self.tileset_size.width as f32),
+                    (g_y as f32) * tile_size.height / (self.tileset_size.height as f32)
                 );
 
                 vertices.extend(&[
@@ -101,7 +98,7 @@ impl<V> Graphic<V> for Tilemap<V> where
             });
         });
 
-        state.extend(vertices.iter(), Some(&self.tileset), draw_config)
+        state.extend(vertices.iter(), Some(self.tileset.clone()), draw_config)
              .map_err(GraphicDrawError::from)?;
 
         Ok(())

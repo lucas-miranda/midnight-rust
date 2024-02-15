@@ -1,8 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Weak};
+use crate::math::Size2;
+
 use super::{Glyph, Texture};
 
 pub trait FontRendering {
-    fn texture<'t>(&'t self) -> Option<&'t Texture>;
+    fn texture(&self) -> Option<Weak<Texture>>;
+    fn texture_size(&self) -> Option<Size2<u32>>;
     fn glyphs(&self) -> HashMap<u32, Glyph>;
     fn ascender(&self) -> f32;
     fn descender(&self) -> f32;

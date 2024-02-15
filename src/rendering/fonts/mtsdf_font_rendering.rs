@@ -2,8 +2,10 @@ use std::{
     path::Path,
     fs::File,
     io::BufReader,
-    collections::HashMap,
+    collections::HashMap, rc::{Weak, Rc},
 };
+
+use crate::math::Size2;
 
 use super::{
     mtsdf::MTSDF,
@@ -14,24 +16,23 @@ use super::{
 };
 
 pub struct MTSDFFontRendering {
-    texture: Texture,
+    texture: Weak<Texture>,
+    tex_size: Size2<u32>,
     data: MTSDF,
 }
 
 impl MTSDFFontRendering {
-    pub fn load<P: AsRef<Path>>(texture: Texture, data_filepath: P) -> Self {
+    pub fn load<P: AsRef<Path>>(texture: &Rc<Texture>, data_filepath: P) -> Self {
         let file = File::open(data_filepath).unwrap();
         let reader = BufReader::new(file);
         let data = serde_json::from_reader(reader).unwrap();
 
+
         Self {
-            texture,
+            texture: Rc::downgrade(&texture),
+            tex_size: texture.size(),
             data,
         }
-    }
-
-    pub fn texture(&self) -> &Texture {
-        &self.texture
     }
 
     pub fn data(&self) -> &MTSDF {
@@ -40,8 +41,12 @@ impl MTSDFFontRendering {
 }
 
 impl FontRendering for MTSDFFontRendering {
-    fn texture<'t>(&'t self) -> Option<&'t Texture> {
-        Some(&self.texture)
+    fn texture(&self) -> Option<Weak<Texture>> {
+        Some(self.texture.clone())
+    }
+
+    fn texture_size(&self) -> Option<Size2<u32>> {
+        Some(self.tex_size)
     }
 
     fn glyphs(&self) -> HashMap<u32, Glyph> {
@@ -89,7 +94,7 @@ pub struct MTSDFFont;
 
 impl MTSDFFont {
     pub fn load<P: AsRef<Path>>(
-        texture: Texture,
+        texture: &Rc<Texture>,
         data_filepath: P
     ) -> Font<MTSDFFontRendering> {
         Font::new(MTSDFFontRendering::load(texture, data_filepath))

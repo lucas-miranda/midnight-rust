@@ -22,10 +22,6 @@ pub struct Grid<V: VertexPosition<Position = Vector2<f32>>> {
 }
 
 impl<V: VertexPosition<Position = Vector2<f32>>> Graphic<V> for Grid<V> {
-    fn texture<'t>(&'t self) -> Option<&'t Texture> {
-        None
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

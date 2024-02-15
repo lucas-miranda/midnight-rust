@@ -14,7 +14,7 @@ pub use text_render_data::*;
 
 use std::{
     collections::HashMap,
-    fmt::Display, path::Path,
+    fmt::Display, path::Path, rc::{Weak, Rc},
 };
 
 use unicode_segmentation::UnicodeSegmentation;
@@ -204,7 +204,7 @@ impl<R: FontRendering> Font<R> {
 }
 
 impl Font<MTSDFFontRendering> {
-    pub fn load_mtsdf<P: AsRef<Path>>(font_texture: Texture, data_filepath: P) -> Self {
+    pub fn load_mtsdf<P: AsRef<Path>>(font_texture: &Rc<Texture>, data_filepath: P) -> Self {
         Self::new(MTSDFFontRendering::load(font_texture, data_filepath))
     }
 }

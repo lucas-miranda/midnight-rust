@@ -21,10 +21,6 @@ impl<D, V> Graphic<V> for Triangle<D> where
     D: Num + Copy + Clone + 'static,
     V: VertexPosition<Position = Vector2<D>>,
 {
-    fn texture<'t>(&'t self) -> Option<&'t Texture> {
-        None
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

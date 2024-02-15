@@ -5,9 +5,10 @@ use std::{
 };
 
 use crate::{
+    base::ApplicationState,
     components::{
-        GraphicDisplayer,
         DiagComponent,
+        GraphicDisplayer,
     },
     ecs::entity::Entities,
     rendering::{
@@ -18,11 +19,9 @@ use crate::{
         graphics::Text,
         AddressMode,
         FilterMode,
-        GraphicAdapter,
         PrimitiveState,
         PrimitiveTopology,
         ShaderConfig,
-        Texture,
         TextureConfig,
         TextureSamplerConfig,
         Vertex2DTexture,
@@ -31,7 +30,7 @@ use crate::{
 
 pub fn create(
     entities: &mut Entities,
-    graphic_adapter: &mut GraphicAdapter,
+    app_state: &ApplicationState,
     shader_weak: Weak<RefCell<MTSDFShader>>,
 ) {
     let mut diag = entities.create();
@@ -81,13 +80,13 @@ pub fn create(
             }
         );
 
-        let font_texture = Texture::load(
-            graphic_adapter,
-            "fonts/baby.png"
-        ).unwrap();
+        let font_texture = app_state.asset_resources.get("baby").unwrap();
 
         let data_filepath = PathBuf::from(r"fonts/baby-data.json");
-        let font = Font::load_mtsdf(font_texture, data_filepath).with_size(16.0);
+        let font = Font::load_mtsdf(
+                &font_texture.upgrade().unwrap(),
+                data_filepath
+            ).with_size(16.0);
         let text = Text::new(font);
 
         graphic_displayer.graphic = Some(Box::new(text));

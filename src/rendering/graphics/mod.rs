@@ -27,7 +27,7 @@ use super::{
 pub trait Graphic<V> : Any where
     V: Vertex
 {
-    fn texture<'t>(&'t self) -> Option<&'t Texture>;
+    //fn texture<'t>(&'t self) -> Option<&'t Texture>;
 
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

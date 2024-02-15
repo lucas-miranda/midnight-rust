@@ -14,7 +14,6 @@ use super::{
     Graphic,
     GraphicDrawError,
     RenderState,
-    Texture,
 };
 
 pub struct Text<R, V> where
@@ -78,10 +77,6 @@ impl<R, V> Graphic<V> for Text<R, V> where
     R: FontRendering,
     V: VertexPosition<Position = Vector2<f32>> + VertexTexture2D,
 {
-    fn texture<'t>(&'t self) -> Option<&'t Texture> {
-        self.font.rendering.texture()
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -101,8 +96,8 @@ impl<R, V> Graphic<V> for Text<R, V> where
 
         let texture_size: Vector2<f32>;
 
-        match self.texture() {
-            Some(texture) => texture_size = Vector2::with(texture.size().width, texture.size().height).unwrap(),
+        match self.font.rendering.texture_size() {
+            Some(tex_size) => texture_size = tex_size.convert().into(),
             None => return Ok(()),
         }
 
@@ -149,7 +144,7 @@ impl<R, V> Graphic<V> for Text<R, V> where
                 ]);
             }
 
-            state.extend(vertices.iter(), self.texture(), draw_config)
+            state.extend(vertices.iter(), self.font.rendering.texture(), draw_config)
                  .map_err(GraphicDrawError::from)?;
         }
 

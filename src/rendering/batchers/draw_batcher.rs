@@ -1,7 +1,7 @@
 use std::{
     cell::{ Ref, RefMut, RefCell },
     slice::Iter,
-    rc::Rc,
+    rc::{Rc, Weak},
 };
 
 use crate::rendering::{
@@ -132,7 +132,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     fn create_batch<'t>(
         &mut self,
         shader: &Shader,
-        texture: Option<&'t Texture>,
+        texture: Option<Weak<Texture>>,
         configuration: (TextureId, ShaderConfig, TextureConfig),
     ) -> Result<&mut ShaderBatch<'a, V>, RenderStateError> {
         let weak_instance = match self.draw_command.shader_builder().get_instance(shader) {
@@ -145,8 +145,9 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
                     .expect(format!("Shader ({}) was dropped", shader).as_str()),
             group: BatchGroup::new(
                 texture.map(|t| {
+                    let tex = t.upgrade().expect("Failed to get texture");
                     let (device, queue) = self.draw_command.device_queue();
-                    t.view(device, queue, configuration.2.clone())
+                    tex.view(device, queue, configuration.2.clone())
                 }),
                 configuration,
             ),
@@ -163,7 +164,7 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
     fn extend<'t>(
         &mut self,
         vertices: Iter<V>,
-        texture: Option<&'t Texture>,
+        texture: Option<Weak<Texture>>,
         draw_config: DrawConfig<V>
     ) -> Result<(), RenderStateError> {
         let shader_config = draw_config
@@ -190,8 +191,8 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
         let texture_config = draw_config.texture_config.unwrap_or_default();
 
         let texture_id = match texture {
-            Some(t) => t.id(),
-            None => &TextureId::NONE,
+            Some(ref t) => t.upgrade().map_or_else(|| TextureId::NONE, |v| v.id().clone()),
+            None => TextureId::NONE,
         };
 
         // check if we can extend last batch

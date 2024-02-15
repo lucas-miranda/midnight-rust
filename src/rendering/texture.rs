@@ -9,8 +9,8 @@ use std::{
 
 use wgpu::{util::DeviceExt, TextureViewDimension, TextureSampleType, FilterMode, SamplerBindingType};
 use image::io::Reader as ImageReader;
-use crate::util::Size;
-use super::{GraphicAdapter, TextureError, TextureConfig};
+use crate::{math::Size2, resources::Asset};
+use super::{TextureError, TextureConfig};
 
 static mut NEXT_ID: TextureId = TextureId(1);
 
@@ -33,17 +33,15 @@ impl Display for TextureId {
 
 pub struct Texture {
     id: TextureId,
-    //texture: wgpu::Texture,
     format: TextureFormat,
-    size: Size<u32>,
+    size: Size2<u32>,
     data: Vec<u8>,
 }
 
 impl Texture {
     pub fn new(
-        _adapter: &GraphicAdapter,
         format: TextureFormat,
-        size: Size<u32>,
+        size: Size2<u32>,
         data: &[u8]
     ) -> Self {
         let id = unsafe {
@@ -62,7 +60,6 @@ impl Texture {
     }
 
     pub fn load<P: AsRef<Path> + std::marker::Copy>(
-        adapter: &GraphicAdapter,
         path: P
     ) -> Result<Self, TextureError> {
         let mut contents = ImageReader::open(path)
@@ -70,7 +67,7 @@ impl Texture {
             .decode()
             .map_err(|_| TextureError::UnsupportedFormat(path.as_ref().to_owned()))?;
 
-        let size = Size::new(contents.width(), contents.height());
+        let size = Size2::new(contents.width(), contents.height());
 
         let data = {
             let rgba = contents.as_mut_rgba8()
@@ -85,7 +82,7 @@ impl Texture {
             rgba.as_raw()
         };
 
-        Ok(Self::new(adapter, TextureFormat::Bgra8UnormSrgb, size, data))
+        Ok(Self::new(TextureFormat::Bgra8UnormSrgb, size, data))
     }
 
     pub(super) fn id(&self) -> &TextureId {
@@ -166,7 +163,7 @@ impl Texture {
         }
     }
 
-    pub fn size(&self) -> Size<u32> {
+    pub fn size(&self) -> Size2<u32> {
         self.size
     }
 
@@ -176,6 +173,14 @@ impl Texture {
 
     pub fn height(&self) -> u32 {
         self.size.height
+    }
+}
+
+impl Asset for Texture {
+    type E = TextureError;
+
+    fn load(path: &Path) -> Result<Self, Self::E> where Self: Sized {
+        Texture::load(path)
     }
 }
 

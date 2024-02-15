@@ -1,5 +1,12 @@
-use crate::{ecs::Domain, window::WindowContext};
-use super::{ApplicationError, ApplicationLoop};
+use crate::{
+    ecs::Domain,
+    window::WindowContext,
+};
+
+use super::{
+    ApplicationError,
+    ApplicationLoop,
+};
 
 #[derive(Default)]
 pub struct Application {
@@ -9,6 +16,7 @@ pub struct Application {
 impl Application {
     pub fn run<L: 'static + ApplicationLoop>(&mut self) -> Result<(), ApplicationError> {
         Self::display_header();
+
         let mut loop_control = L::new(
                 WindowContext::new()
                     .map_err(ApplicationError::WindowCreationFailed)?

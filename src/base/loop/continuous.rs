@@ -1,9 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::{
     base::{ApplicationState, ApplicationError},
     ecs::{Domain, FrameState},
-    input::{Input, Event},
+    input::Event,
     rendering::GraphicAdapter,
     time::Time,
     window::WindowContext,
@@ -47,7 +45,6 @@ impl ApplicationLoop for ContinuousLoop {
             .unwrap();
 
         // time
-        let time = Time::new();
         let mut last_update_instant = Time::now();
         let mut last_render_instant = Time::now();
 
@@ -65,13 +62,7 @@ impl ApplicationLoop for ContinuousLoop {
         );
 
         // compose application state
-        let mut state = ApplicationState {
-            main_window: window,
-            time,
-            graphic_adapter: Rc::new(RefCell::new(graphic_adapter)),
-            input: Input::default(),
-            diagnostics: Default::default(),
-        };
+        let mut state = ApplicationState::new(window, graphic_adapter);
 
         // setup all domains
         for domain in &mut self.domains {

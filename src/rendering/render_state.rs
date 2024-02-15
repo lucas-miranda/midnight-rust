@@ -1,4 +1,4 @@
-use std::slice::Iter;
+use std::{slice::Iter, rc::Weak};
 use super::{
     DrawConfig,
     Texture,
@@ -10,10 +10,10 @@ use super::{
 pub trait RenderState<V> where
     V: Vertex,
 {
-    fn extend<'t>(
+    fn extend(
         &mut self,
         vertices: Iter<V>,
-        texture: Option<&'t Texture>,
+        texture: Option<Weak<Texture>>,
         draw_config: DrawConfig<V>,
     ) -> Result<(), RenderStateError>;
 }

@@ -21,14 +21,11 @@ use std::{
     cell::RefCell,
 };
 
-use crate::{
-    rendering::shaders::{
-        BindingsDescriptorEntry,
-        Shader,
-        ShaderDescriptor,
-        VertexAttribute,
-    },
-    resources::ShaderResources,
+use crate::rendering::shaders::{
+    BindingsDescriptorEntry,
+    Shader,
+    ShaderDescriptor,
+    VertexAttribute,
 };
 
 use super::{ShaderId, ShaderInstance, ShaderDescriptorError};
@@ -48,7 +45,6 @@ pub struct ShaderBuilder {
     backend: ShaderBackend,
     contexts: HashMap<Shader, ShaderContext>,
     instances: HashMap<Shader, Weak<RefCell<dyn ShaderInstance>>>,
-    resources: ShaderResources,
 }
 
 impl ShaderBuilder {
@@ -63,7 +59,6 @@ impl ShaderBuilder {
             backend: ShaderBackend::default(),
             contexts: HashMap::new(),
             instances: HashMap::new(),
-            resources: Default::default(),
         }
     }
 
@@ -73,10 +68,6 @@ impl ShaderBuilder {
 
     pub fn get_mut_context(&mut self, shader: &Shader) -> Option<&mut ShaderContext> {
         self.contexts.get_mut(shader)
-    }
-
-    pub fn resources(&self) -> &ShaderResources {
-        &self.resources
     }
 
     pub fn get_instance(&self, shader: &Shader) -> Option<&Weak<RefCell<dyn ShaderInstance>>> {
@@ -123,7 +114,6 @@ impl ShaderBuilder {
             )?;
 
         self.contexts.insert(shader, context);
-        self.resources.insert(shader);
 
         let instance = {
             let instance = Rc::new(RefCell::new(S::new(shader)));

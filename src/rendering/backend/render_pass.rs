@@ -1,4 +1,4 @@
-use std::slice::Iter;
+use std::{slice::Iter, rc::Weak};
 use wgpu::util::DeviceExt;
 
 use crate::rendering::{
@@ -140,7 +140,7 @@ impl<'a, V: Vertex> RenderState<V> for RenderPass<'a, V> {
     fn extend<'t>(
         &mut self,
         vertices: Iter<V>,
-        _texture: Option<&'t Texture>,
+        _texture: Option<Weak<Texture>>,
         draw_config: DrawConfig<V>,
     ) -> Result<(), RenderStateError> {
         self.vertex_data.extend(
