@@ -34,7 +34,7 @@ use crate::{
         TextureSampleType,
         TextureViewDimension,
     },
-    vertex_attrs, resources::Asset,
+    vertex_attrs,
 };
 
 #[repr(C)]

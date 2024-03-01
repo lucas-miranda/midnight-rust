@@ -21,56 +21,19 @@ use crate::{rendering::{
 use super::{DrawBatcherError, BatchMode};
 
 pub struct DrawBatcher<'a, 'r, V: Vertex> {
-    //batches: HashMap<Shader, ShaderBatch<'a, V>>,
     batches: Vec<ShaderBatch<'a, V>>,
-
     draw_command: &'a mut DrawCommand<'r>,
     mode: BatchMode,
-
-    last_shader: Option<Shader>,
-    last_batch_group: Option<(TextureId, ShaderConfig, TextureConfig)>,
 }
 
 impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     pub fn new(draw_command: &'a mut DrawCommand<'r>) -> Self {
-        let mut batches = Vec::default();
-
-        // register every shader from shader builder
-        /*
-        draw_command.shader_builder()
-            .instances()
-            .iter()
-            .for_each(|(id, weak_ref)| {
-                batches.insert(
-                    *id,
-                    ShaderBatch {
-                        instance: weak_ref.upgrade().expect(format!("Shader (id {}) was dropped", id).as_str()),
-                        group: None,
-                    }
-                );
-            });
-        */
-
         Self {
-            batches,
+            batches: Vec::default(),
             draw_command,
             mode: BatchMode::DrawOrder,
-            last_shader: None,
-            last_batch_group: None,
         }
     }
-
-    /*
-    pub fn register_shader<S: ShaderInstance>(&mut self, shader: &'a S) {
-        self.batches.insert(
-            shader.id(),
-            ShaderBatch {
-                instance: shader,
-                groups: Default::default(),
-            }
-        );
-    }
-    */
 
     pub fn batch_count(&self) -> usize {
         self.batches.len()
@@ -216,54 +179,17 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
         ));
 
         Ok(())
-
-        //
-
-        /*
-        let shader_batch = self.batches
-                               .get_mut(shader)
-                               .ok_or_else(|| RenderStateError::ShaderNotFound(*shader))?;
-
-        let batch_group = match shader_batch.groups.get_mut(&(*texture_id, shader_config, texture_config)) {
-            Some(group) => {
-                group
-            },
-            None => {
-                shader_batch.groups.insert(
-                    (*texture_id, shader_config, texture_config),
-                    BatchGroup {
-                        texture_view: texture.map(|t| {
-                            let (device, queue) = self.draw_command.device_queue();
-                            t.view(device, queue, texture_config)
-                        }),
-                        vertices: Vec::new(),
-                    }
-                );
-
-                // NOTE  safe to unwrap  key was inserted previously
-                shader_batch.groups.get_mut(&(*texture_id, shader_config, texture_config)).unwrap()
-            },
-        };
-
-        batch_group.vertices.extend(vertices.map(
-            |v| *v + draw_config.vertex
-        ));
-
-        Ok(())
-        */
     }
 }
 
 struct ShaderBatch<'a, V: Vertex> {
     pub instance: Rc<RefCell<dyn ShaderInstance>>,
-    //pub groups: HashMap<(TextureId, ShaderConfig, TextureConfig), BatchGroup<'a, V>>,
     pub group: BatchGroup<'a, V>,
 }
 
 #[derive(Default)]
 struct BatchGroup<'v, V: Vertex> {
     pub texture_view: Option<TextureView<'v>>,
-    //pub texture_id: Option<TextureId>,
     pub configuration: (TextureId, ShaderConfig, TextureConfig),
     pub vertices: Vec<V>,
 }

@@ -11,7 +11,6 @@ use super::{
     Graphic,
     GraphicDrawError,
     RenderState,
-    Texture,
 };
 
 pub struct Grid<V: VertexPosition<Position = Vector2<f32>>> {

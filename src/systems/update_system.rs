@@ -1,13 +1,15 @@
-use crate::{ecs::{
-    component::{
-        self,
-        //BaseQuery,
-        ComponentStrongAnyRef,
+use crate::{
+    ecs::{
+        component::{
+            self,
+            //BaseQuery,
+            ComponentStrongAnyRef,
+        },
+        system::System,
+        FrameState,
     },
-    system::System,
-    FrameState,
-}, base::ApplicationState};
-use crate::input;
+    base::ApplicationState,
+};
 
 #[derive(Default)]
 pub struct UpdateSystem<'a> {

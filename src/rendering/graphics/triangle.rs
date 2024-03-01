@@ -14,7 +14,6 @@ use super::{
     Graphic,
     GraphicDrawError,
     RenderState,
-    Texture,
 };
 
 impl<D, V> Graphic<V> for Triangle<D> where

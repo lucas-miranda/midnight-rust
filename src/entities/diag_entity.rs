@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    rc::Rc,
-};
+use std::path::PathBuf;
 
 use crate::{
     base::ApplicationState,
@@ -21,27 +18,22 @@ use crate::{
         PrimitiveState,
         PrimitiveTopology,
         ShaderConfig,
+        Texture,
         TextureConfig,
         TextureSamplerConfig,
         Vertex2DTexture,
-        Texture,
     }, resources::Asset,
 };
 
 pub fn create(
     entities: &mut Entities,
     app_state: &mut ApplicationState,
-    //shader_weak: Weak<RefCell<MTSDFShader>>,
 ) {
     let mut diag = entities.create();
     diag.register_component(DiagComponent::default());
 
     diag.register_component({
         let mut graphic_displayer = GraphicDisplayer::<Vertex2DTexture>::default();
-
-
-        //let shader_entry = shader_weak.upgrade().unwrap();
-        //let mut shader = shader_entry.borrow_mut();
 
         {
             let shader: &mut MTSDFShader = &mut app_state.asset_resources
@@ -53,6 +45,7 @@ pub fn create(
             //let font_scale = 1.0;
             //let font_size = 32.0;
 
+            // TODO  use vertex color
             let uniforms = shader.uniforms_mut();
             uniforms.color = 0xFF00FFFF.into();
             //uniforms.screen_px_range = ((font_scale * font_size) / font_base_size) * px_distance_range;

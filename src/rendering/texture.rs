@@ -9,7 +9,7 @@ use std::{
 
 use wgpu::{util::DeviceExt, TextureViewDimension, TextureSampleType, FilterMode, SamplerBindingType};
 use image::io::Reader as ImageReader;
-use crate::{math::Size2, resources::{Asset, AssetPathLoad}};
+use crate::{math::Size2, resources::AssetPathLoad};
 use super::{TextureError, TextureConfig};
 
 static mut NEXT_ID: TextureId = TextureId(1);

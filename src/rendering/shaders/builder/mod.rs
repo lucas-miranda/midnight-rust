@@ -13,8 +13,6 @@ pub(in crate::rendering::shaders) use processor::ShaderProcessor;
 mod processor_error;
 pub(in crate::rendering::shaders) use processor_error::ShaderProcessorError;
 
-pub use wgpu::PrimitiveTopology;
-
 use std::{
     collections::HashMap,
     rc::{ Rc, Weak },

@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::{window::WindowContext, ecs::SystemScheduler};
+use crate::window::WindowContext;
 
 use super::{
     ApplicationError,
