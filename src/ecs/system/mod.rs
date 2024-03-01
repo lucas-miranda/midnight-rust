@@ -1,5 +1,5 @@
 mod system_interface;
-pub use system_interface::SystemInterface;
+pub(crate) use system_interface::SystemInterface;
 
 use crate::{ecs::component::BaseQuery, base::ApplicationState};
 

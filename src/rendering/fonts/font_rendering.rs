@@ -1,10 +1,10 @@
-use std::{collections::HashMap, rc::Weak};
-use crate::math::Size2;
+use std::collections::HashMap;
+use crate::{math::Size2, resources::AssetWeak};
 
 use super::{Glyph, Texture};
 
 pub trait FontRendering {
-    fn texture(&self) -> Option<Weak<Texture>>;
+    fn texture(&self) -> Option<AssetWeak<Texture>>;
     fn texture_size(&self) -> Option<Size2<u32>>;
     fn glyphs(&self) -> HashMap<u32, Glyph>;
     fn ascender(&self) -> f32;

@@ -14,11 +14,12 @@ pub use text_render_data::*;
 
 use std::{
     collections::HashMap,
-    fmt::Display, path::Path, rc::{Weak, Rc},
+    fmt::Display,
+    path::Path,
 };
 
 use unicode_segmentation::UnicodeSegmentation;
-use crate::math::{Size2, Vector2};
+use crate::{math::{Size2, Vector2}, resources::Asset};
 
 use super::Texture;
 
@@ -204,7 +205,9 @@ impl<R: FontRendering> Font<R> {
 }
 
 impl Font<MTSDFFontRendering> {
-    pub fn load_mtsdf<P: AsRef<Path>>(font_texture: &Rc<Texture>, data_filepath: P) -> Self {
+    pub fn load_mtsdf<P>(font_texture: &Asset<Texture>, data_filepath: P) -> Self where
+        P: AsRef<Path>
+    {
         Self::new(MTSDFFontRendering::load(font_texture, data_filepath))
     }
 }

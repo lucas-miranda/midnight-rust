@@ -1,7 +1,6 @@
 use std::{
-    cell::RefCell,
     path::PathBuf,
-    rc::Weak,
+    rc::Rc,
 };
 
 use crate::{
@@ -25,13 +24,14 @@ use crate::{
         TextureConfig,
         TextureSamplerConfig,
         Vertex2DTexture,
-    },
+        Texture,
+    }, resources::Asset,
 };
 
 pub fn create(
     entities: &mut Entities,
-    app_state: &ApplicationState,
-    shader_weak: Weak<RefCell<MTSDFShader>>,
+    app_state: &mut ApplicationState,
+    //shader_weak: Weak<RefCell<MTSDFShader>>,
 ) {
     let mut diag = entities.create();
     diag.register_component(DiagComponent::default());
@@ -39,10 +39,15 @@ pub fn create(
     diag.register_component({
         let mut graphic_displayer = GraphicDisplayer::<Vertex2DTexture>::default();
 
-        let shader_entry = shader_weak.upgrade().unwrap();
-        let mut shader = shader_entry.borrow_mut();
+
+        //let shader_entry = shader_weak.upgrade().unwrap();
+        //let mut shader = shader_entry.borrow_mut();
 
         {
+            let shader: &mut MTSDFShader = &mut app_state.asset_resources
+                                               .get_mut("default")
+                                               .unwrap();
+
             let distance_range = 2.0f32; //8.0f32;
             //let font_base_size = 32.0;
             //let font_scale = 1.0;
@@ -54,6 +59,10 @@ pub fn create(
             //let unit_range = Vector2::new(px_distance_range, px_distance_range) / 256.0f32;
             uniforms.screen_px_range = distance_range;
         }
+
+        let shader: &MTSDFShader = &app_state.asset_resources
+                                           .get("default")
+                                           .unwrap();
 
         graphic_displayer.shader_config = Some(
             ShaderConfig::new::<MTSDFShader>(
@@ -80,11 +89,11 @@ pub fn create(
             }
         );
 
-        let font_texture = app_state.asset_resources.get("baby").unwrap();
+        let font_texture: &Asset<Texture> = &app_state.asset_resources.get_asset("baby").unwrap();
 
         let data_filepath = PathBuf::from(r"fonts/baby-data.json");
         let font = Font::load_mtsdf(
-                &font_texture.upgrade().unwrap(),
+                font_texture,
                 data_filepath
             ).with_size(16.0);
         let text = Text::new(font);

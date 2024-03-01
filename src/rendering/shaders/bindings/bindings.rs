@@ -21,11 +21,12 @@ pub struct Bindings<'d> {
 
 impl<'d> Bindings<'d> {
     /// Place provided uniforms at first found Uniform binding entry.
-    pub fn uniforms<U>(&mut self, uniforms: &Vec<U>) -> Result<(), BindingsError> where
+    pub fn uniforms<U>(&mut self, uniforms: &[U]) -> Result<(), BindingsError> where
         U: bytemuck::Pod + bytemuck::Zeroable
     {
         let uniform_buffer;
-        let contents = bytemuck::cast_slice(uniforms.as_slice());
+        //let c = vec![uniforms];
+        let contents = bytemuck::cast_slice(uniforms);
 
         let misaligned_bytes = wgpu::util::align_to(contents.len(), super::UNIFORM_BINDING_ALIGNMENT) - contents.len();
         if misaligned_bytes > 0 {

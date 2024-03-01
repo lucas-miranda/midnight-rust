@@ -15,10 +15,6 @@ use crate::math::num_traits::{
 };
 
 /// Describes a tri-dimensional value.
-/// Shorthand to Vector3<T>.
-pub type Vec3<T> = Vector3<T>;
-
-/// Describes a tri-dimensional value.
 ///
 /// It doesn't works as, or shares the same properties with, formal mathematics' vector.
 ///

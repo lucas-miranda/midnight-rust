@@ -23,10 +23,6 @@ use super::Size2;
 pub type Point<T> = Vector2<T>;
 
 /// Describes a bi-dimensional value.
-/// Shorthand to Vector2<T>.
-pub type Vec2<T> = Vector2<T>;
-
-/// Describes a bi-dimensional value.
 ///
 /// It doesn't works as, or shares the same properties with, formal mathematics' vector.
 ///

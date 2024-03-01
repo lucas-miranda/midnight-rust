@@ -1,4 +1,7 @@
-use std::{marker::PhantomData, any::Any, rc::{Weak, Rc}};
+use std::{
+    any::Any,
+    marker::PhantomData,
+};
 
 use crate::{
     math::{Vector2, Rectangle, Size2},
@@ -6,7 +9,7 @@ use crate::{
         VertexPosition,
         VertexTexture2D,
     },
-    util::Size,
+    util::Size, resources::{Asset, AssetWeak},
 };
 
 use super::{
@@ -18,17 +21,20 @@ use super::{
 };
 
 pub struct Image<V: VertexPosition<Position = Vector2<f32>>> {
-    texture: Weak<Texture>,
+    texture: AssetWeak<Texture>,
     phantom: PhantomData<V>,
     clip_region: Rectangle<i32>,
 }
 
 impl<V: VertexPosition<Position = Vector2<f32>> + VertexTexture2D> Image<V> {
-    pub fn new(texture: Rc<Texture>) -> Self {
+    pub fn new(texture: &Asset<Texture>) -> Self {
         Self {
-            texture: Rc::downgrade(&texture),
+            texture: texture.weak(),
             phantom: Default::default(),
-            clip_region: Rectangle::new(Vector2::zero(), Size2::new(texture.width() as i32, texture.height() as i32))
+            clip_region: Rectangle::new(
+                Vector2::zero(),
+                Size2::new(texture.get().width() as i32, texture.get().height() as i32),
+            ),
         }
     }
 }

@@ -1,8 +1,12 @@
-use std::{marker::PhantomData, any::Any, rc::{Weak, Rc}};
+use std::{
+    any::Any,
+    marker::PhantomData,
+};
 
 use crate::{
     math::{Vector2, Size2},
     rendering::{VertexPosition, VertexTexture2D},
+    resources::{AssetWeak, Asset},
 };
 
 use super::{
@@ -17,20 +21,20 @@ pub struct Tilemap<V: VertexPosition<Position = Vector2<f32>>> {
     pub columns: u32,
     pub rows: u32,
     pub tile_size: Size2<u32>,
-    pub tileset: Weak<Texture>,
+    pub tileset: AssetWeak<Texture>,
     pub tileset_size: Size2<u32>,
     pub tiles: Vec<u32>,
     pub phantom: PhantomData<V>,
 }
 
 impl<V: VertexPosition<Position = Vector2<f32>>> Tilemap<V> {
-    pub fn new(columns: u32, rows: u32, tile_size: Size2<u32>, tileset: Rc<Texture>) -> Self {
+    pub fn new(columns: u32, rows: u32, tile_size: Size2<u32>, tileset: &Asset<Texture>) -> Self {
         Self {
             columns,
             rows,
             tile_size,
-            tileset: Rc::downgrade(&tileset),
-            tileset_size: tileset.size(),
+            tileset: tileset.weak(),
+            tileset_size: tileset.get().size(),
             tiles: Vec::new(),
             phantom: Default::default(),
         }

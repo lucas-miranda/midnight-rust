@@ -9,7 +9,7 @@ use std::{
 
 use wgpu::{util::DeviceExt, TextureViewDimension, TextureSampleType, FilterMode, SamplerBindingType};
 use image::io::Reader as ImageReader;
-use crate::{math::Size2, resources::Asset};
+use crate::{math::Size2, resources::{Asset, AssetPathLoad}};
 use super::{TextureError, TextureConfig};
 
 static mut NEXT_ID: TextureId = TextureId(1);
@@ -176,10 +176,10 @@ impl Texture {
     }
 }
 
-impl Asset for Texture {
-    type E = TextureError;
+impl AssetPathLoad for Texture {
+    type LoadError = TextureError;
 
-    fn load(path: &Path) -> Result<Self, Self::E> where Self: Sized {
+    fn load(path: &Path) -> Result<Self, Self::LoadError> where Self: Sized {
         Texture::load(path)
     }
 }

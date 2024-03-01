@@ -17,10 +17,6 @@ use crate::math::num_traits::{
 };
 
 /// Describes a quad-dimensional value.
-/// Shorthand to Vector4<T>.
-pub type Vec4<T> = Vector4<T>;
-
-/// Describes a quad-dimensional value.
 ///
 /// It doesn't works as, or shares the same properties with, formal mathematics' vector.
 ///

@@ -1,11 +1,11 @@
-use std::{slice::Iter, rc::Weak};
+use std::slice::Iter;
 use wgpu::util::DeviceExt;
 
-use crate::rendering::{
+use crate::{rendering::{
     shaders::{ builder::ShaderPipeline, Bindings },
     Color, DrawConfig, RenderState, RenderStateError,
     Texture, Vertex,
-};
+}, resources::AssetWeak};
 
 use super::PassError;
 
@@ -140,7 +140,7 @@ impl<'a, V: Vertex> RenderState<V> for RenderPass<'a, V> {
     fn extend<'t>(
         &mut self,
         vertices: Iter<V>,
-        _texture: Option<Weak<Texture>>,
+        _texture: Option<AssetWeak<Texture>>,
         draw_config: DrawConfig<V>,
     ) -> Result<(), RenderStateError> {
         self.vertex_data.extend(

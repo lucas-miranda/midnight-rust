@@ -1,38 +1,42 @@
-use crate::{
-    ecs::Domain,
-    window::WindowContext,
-};
+use std::error::Error;
+
+use crate::{window::WindowContext, ecs::SystemScheduler};
 
 use super::{
     ApplicationError,
     ApplicationLoop,
+    ApplicationState,
+    InitFn,
+    InitState,
 };
 
 #[derive(Default)]
 pub struct Application {
-    domains: Vec<Box<dyn Domain>>
+    init_fn: Option<InitFn>,
 }
 
 impl Application {
     pub fn run<L: 'static + ApplicationLoop>(&mut self) -> Result<(), ApplicationError> {
         Self::display_header();
 
-        let mut loop_control = L::new(
+        let loop_control = L::new(
                 WindowContext::new()
                     .map_err(ApplicationError::WindowCreationFailed)?
             );
 
-        for domain in self.domains.drain(..) {
-            loop_control.register_domain(domain);
-        }
-
-        loop_control.run()?;
+        loop_control.run(self.init_fn.take())?;
 
         Ok(())
     }
 
-    pub fn with_domain<D: 'static + Domain>(mut self, domain: D) -> Self {
-        self.domains.push(Box::new(domain));
+    pub fn initialize_with<E, F>(mut self, init_fn: F) -> Self where
+        E: 'static + Error,
+        F: 'static + FnOnce(&mut ApplicationState, InitState) -> Result<(), E>,
+    {
+        self.init_fn = Some(Box::new(|app_state, init_state| {
+            init_fn(app_state, init_state).map_err(Into::into)
+        }));
+
         self
     }
 

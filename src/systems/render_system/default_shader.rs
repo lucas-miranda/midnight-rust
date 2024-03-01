@@ -1,6 +1,6 @@
 use std::{
     rc::Rc,
-    cell::RefCell
+    cell::RefCell,
 };
 
 use bytemuck::{Pod, Zeroable};
@@ -51,7 +51,7 @@ impl WorldViewProjectionUniforms for DefaultUniforms {
 
 pub struct DefaultShader {
     shader: Shader,
-    uniforms: Vec<DefaultUniforms>,
+    uniforms: DefaultUniforms,
     default_config: ShaderConfig,
 }
 
@@ -81,7 +81,7 @@ impl DefaultShader {
     }
 
     pub fn uniforms_mut(&mut self) -> &mut DefaultUniforms {
-        self.uniforms.get_mut(0).unwrap()
+        &mut self.uniforms
     }
 }
 
@@ -102,21 +102,21 @@ impl ShaderInstance for DefaultShader {
 
         Self {
             shader,
-            uniforms: vec![DefaultUniforms::default()],
+            uniforms: DefaultUniforms::default(),
             default_config,
         }
     }
 
     fn world_view_projection_uniforms(&self) -> Option<&dyn WorldViewProjectionUniforms> {
-        Some(&self.uniforms[0])
+        Some(&self.uniforms)
     }
 
     fn mut_world_view_projection_uniforms(&mut self) -> Option<&mut dyn WorldViewProjectionUniforms> {
-        Some(&mut self.uniforms[0])
+        Some(&mut self.uniforms)
     }
 
     fn bindings<'b>(&'b self, mut bindings: Bindings<'b>) -> Result<Bindings<'b>, BindingsError> {
-        bindings.uniforms(&self.uniforms)?;
+        bindings.uniforms(vec![self.uniforms].as_slice())?;
 
         Ok(bindings)
     }

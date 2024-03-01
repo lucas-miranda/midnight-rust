@@ -1,19 +1,20 @@
 use crate::{
-    base::{ApplicationState, ApplicationError},
-    ecs::{Domain, FrameState},
+    base::{ApplicationState, ApplicationError, InitState},
+    ecs::{FrameState, SystemScheduler, entity::Entities, SchedulerStep},
     input::Event,
     rendering::GraphicAdapter,
     time::Time,
     window::WindowContext,
 };
 
-use super::ApplicationLoop;
+use super::{ApplicationLoop, InitFn};
 
 const WINDOW_SIZE: [u32; 2] = [320, 180];
 
 pub struct ContinuousLoop {
     window_context: WindowContext,
-    domains: Vec<Box<dyn Domain>>,
+    entities: Entities,
+    sys_scheduler: SystemScheduler,
 }
 
 impl ContinuousLoop {
@@ -23,15 +24,12 @@ impl ApplicationLoop for ContinuousLoop {
     fn new(window_context: WindowContext) -> Self {
          Self {
             window_context,
-            domains: Vec::new(),
+            entities: Entities::new(),
+            sys_scheduler: SystemScheduler::new(),
         }
     }
 
-    fn register_domain<D: Into<Box<dyn Domain>>>(&mut self, domain: D) {
-        self.domains.push(domain.into());
-    }
-
-    fn run(mut self) -> Result<(), ApplicationError> {
+    fn run(mut self, init_fn: Option<InitFn>) -> Result<(), ApplicationError> {
         let (logical_window_size, physical_window_size)
             = self.window_context.calculate_window_size(
                 (WINDOW_SIZE[0], WINDOW_SIZE[1])
@@ -64,9 +62,16 @@ impl ApplicationLoop for ContinuousLoop {
         // compose application state
         let mut state = ApplicationState::new(window, graphic_adapter);
 
-        // setup all domains
-        for domain in &mut self.domains {
-            domain.setup(&mut state, &mut self.window_context);
+        // run provided init fn
+        if let Some(init) = init_fn {
+            let init_state = InitState {
+                window_context: &mut self.window_context,
+                system_scheduler: &mut self.sys_scheduler,
+                entities: &mut self.entities,
+            };
+
+            init(&mut state, init_state)
+                .map_err(ApplicationError::InitFailed)?;
         }
 
         self.window_context.run(move |event, event_handler| {
@@ -90,19 +95,13 @@ impl ApplicationLoop for ContinuousLoop {
                             };
 
                             let render_timer_instant = Time::now();
-
-                            for domain in &mut self.domains {
-                                domain.render(&mut frame_state);
-                            }
-
+                            self.sys_scheduler.run(&SchedulerStep::Render, &self.entities, &mut frame_state);
                             state.diagnostics.render_timer = Time::now() - render_timer_instant;
                         },
                         _ => {
                             state.input.handle(Event::from(win_event));
 
-                            for domain in &mut self.domains {
-                                domain.input(&mut state);
-                            }
+                            //self.sys_scheduler.run(&SchedulerStep::Input, &self.entities, &mut frame_state);
                         },
                     }
                 },
@@ -116,9 +115,7 @@ impl ApplicationLoop for ContinuousLoop {
 
                     let update_timer_instant = Time::now();
 
-                    for domain in &mut self.domains {
-                        domain.update(&mut frame_state);
-                    }
+                    self.sys_scheduler.run(&SchedulerStep::Update, &self.entities, &mut frame_state);
 
                     state.diagnostics.update_timer = Time::now() - update_timer_instant;
                     state.main_window.request_redraw();

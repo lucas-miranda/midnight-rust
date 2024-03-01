@@ -3,7 +3,8 @@ pub use default_shader::*;
 
 use std::{
     rc::{Rc, Weak},
-    cell::RefCell, marker::PhantomData
+    cell::RefCell,
+    marker::PhantomData,
 };
 
 use crate::{
@@ -51,7 +52,7 @@ impl<V: Vertex> RenderSystem<V> {
     pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
         Self {
             graphic_adapter: Rc::downgrade(graphic_adapter),
-            default_shader: DefaultShader::new(&graphic_adapter),
+            default_shader: DefaultShader::new(graphic_adapter),
             phantom: Default::default(),
             clear_color: 0xFF236EFF.into(),
             view: Matrix4x4::default(),

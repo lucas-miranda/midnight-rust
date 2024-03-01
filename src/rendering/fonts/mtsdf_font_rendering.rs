@@ -1,11 +1,14 @@
 use std::{
-    path::Path,
+    collections::HashMap,
     fs::File,
     io::BufReader,
-    collections::HashMap, rc::{Weak, Rc},
+    path::Path,
 };
 
-use crate::math::Size2;
+use crate::{
+    math::Size2,
+    resources::{AssetWeak, Asset},
+};
 
 use super::{
     mtsdf::MTSDF,
@@ -16,21 +19,21 @@ use super::{
 };
 
 pub struct MTSDFFontRendering {
-    texture: Weak<Texture>,
+    texture: AssetWeak<Texture>,
     tex_size: Size2<u32>,
     data: MTSDF,
 }
 
 impl MTSDFFontRendering {
-    pub fn load<P: AsRef<Path>>(texture: &Rc<Texture>, data_filepath: P) -> Self {
+    pub fn load<P: AsRef<Path>>(texture: &Asset<Texture>, data_filepath: P) -> Self {
         let file = File::open(data_filepath).unwrap();
         let reader = BufReader::new(file);
         let data = serde_json::from_reader(reader).unwrap();
 
 
         Self {
-            texture: Rc::downgrade(&texture),
-            tex_size: texture.size(),
+            texture: texture.weak(),
+            tex_size: texture.get().size(),
             data,
         }
     }
@@ -41,7 +44,7 @@ impl MTSDFFontRendering {
 }
 
 impl FontRendering for MTSDFFontRendering {
-    fn texture(&self) -> Option<Weak<Texture>> {
+    fn texture(&self) -> Option<AssetWeak<Texture>> {
         Some(self.texture.clone())
     }
 
@@ -94,7 +97,7 @@ pub struct MTSDFFont;
 
 impl MTSDFFont {
     pub fn load<P: AsRef<Path>>(
-        texture: &Rc<Texture>,
+        texture: &Asset<Texture>,
         data_filepath: P
     ) -> Font<MTSDFFontRendering> {
         Font::new(MTSDFFontRendering::load(texture, data_filepath))

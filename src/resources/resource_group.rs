@@ -1,56 +1,71 @@
 use std::{
     any::Any,
+    cell::{Ref, RefMut},
     collections::HashMap,
     path::Path,
-    rc::{Rc, Weak},
 };
 
-use super::{Asset, AssetResourceLoader};
+use super::{Asset, AssetPathLoad, AssetError};
 
-pub struct AssetResourceGroup<T: Asset> {
-    loader: Box<dyn AssetResourceLoader<T>>,
-    entries: HashMap<String, Rc<T>>,
+pub struct AssetResourceGroup<T> {
+    entries: HashMap<String, Asset<T>>,
 }
 
-impl<T: Asset> AssetResourceGroup<T> {
-    pub fn new<L: 'static + AssetResourceLoader<T>>(loader: L) -> Self {
+impl<T> AssetResourceGroup<T> {
+    pub fn new() -> Self {
         Self {
-            loader: Box::new(loader),
             entries: HashMap::default(),
         }
     }
 
-    pub fn get<S: AsRef<str>>(&self, id: S) -> Option<Weak<T>> {
-        self.entries.get(id.as_ref()).map(|r| Rc::downgrade(r))
+    pub fn get_asset<S: AsRef<str>>(&self, id: S) -> Result<&Asset<T>, AssetError> {
+        self.entries
+            .get(id.as_ref())
+            .ok_or_else(|| AssetError::AssetNotFound(id.as_ref().to_owned()))
     }
 
-    /*
-    pub fn get_mut<S: AsRef<String>>(&mut self, id: S) -> Option<Weak<&mut T>> {
-        self.entries.get_mut(id.as_ref()).map(|r| Rc::downgrade(r))
+    pub fn get<S: AsRef<str>>(&self, id: S) -> Result<Ref<'_, T>, AssetError> {
+        self.entries
+            .get(id.as_ref())
+            .map(|asset| asset.get())
+            .ok_or_else(|| AssetError::AssetNotFound(id.as_ref().to_owned()))
     }
-    */
+
+    pub fn get_mut<S: AsRef<str>>(&mut self, id: S) -> Result<RefMut<'_, T>, AssetError> {
+        self.entries
+            .get_mut(id.as_ref())
+            .map(|asset| asset.get_mut())
+            .ok_or_else(|| AssetError::AssetNotFound(id.as_ref().to_owned()))
+    }
+
+    pub fn register_asset<S: Into<String>, A: Into<Asset<T>>>(&mut self, id: S, asset: A) {
+        self.entries.insert(id.into(), asset.into());
+    }
 
     pub fn register<S: Into<String>>(&mut self, id: S, resource: T) {
-        self.entries.insert(id.into(), Rc::new(resource));
+        self.register_asset(id, Asset::new(resource))
     }
+}
 
-    pub fn load<I, P>(&mut self, id: I, path: P) -> Result<(), T::E> where
+impl<T: AssetPathLoad> AssetResourceGroup<T> {
+    pub fn load<I, P>(&mut self, id: I, path: P) -> Result<(), T::LoadError> where
         I: Into<String>,
         P: AsRef<Path>,
     {
-        let res = self.loader.load(path.as_ref())?;
+        let res = T::load(path.as_ref())?;
         self.register(id.into(), res);
 
         Ok(())
     }
 }
 
+
 pub trait UnknownAssetResourceGroup {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-impl<T: 'static + Asset> UnknownAssetResourceGroup for AssetResourceGroup<T> {
+impl<T: 'static> UnknownAssetResourceGroup for AssetResourceGroup<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }

@@ -9,7 +9,7 @@ use crate::ecs::{
 
 use super::System;
 
-pub struct SystemInterface {
+pub(crate) struct SystemInterface {
     system: Box<dyn Any>,
     setup_fn: Box<dyn FnMut(&mut Box<dyn Any>)>,
     input_fn: Box<dyn FnMut(&mut Box<dyn Any>, EntitiesIter<'_>, &mut ApplicationState)>,

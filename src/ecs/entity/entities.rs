@@ -20,7 +20,7 @@ impl Entities {
         }
     }
 
-    pub fn with_setup<F: 'static + FnMut(&mut Entity)>(mut self, setup_entity: F) -> Self {
+    pub fn with_setup<F: 'static + FnMut(&mut Entity)>(&mut self, setup_entity: F) -> &mut Self {
         self.setup_entity = Some(Box::new(setup_entity));
         self
     }

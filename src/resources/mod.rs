@@ -1,16 +1,16 @@
 mod asset;
-pub use asset::Asset;
+pub use asset::*;
 
-mod loader;
-pub use loader::*;
+mod error;
+pub use error::AssetError;
 
 mod resource_group;
 pub use resource_group::*;
 
 use std::{
-    any::TypeId,
+    any::{TypeId, type_name},
+    cell::{Ref, RefMut},
     collections::HashMap,
-    rc::Weak,
 };
 
 #[derive(Default)]
@@ -19,37 +19,41 @@ pub struct AssetResources {
 }
 
 impl AssetResources {
-    pub fn register_loader<T: 'static + Asset>(&mut self) {
+    pub fn register_loader<T: 'static>(&mut self) {
         self.groups.insert(
             TypeId::of::<T>(),
-            Box::new(AssetResourceGroup::<T>::new(
-                AssetLoader::default()
-            )),
+            Box::new(AssetResourceGroup::<T>::new()),
         );
     }
 
-    /*
-    pub fn register_custom_loader<T, L: 'static + ResourceLoader<T>>(&mut self, loader: L) {
-        self.groups.insert(TypeId::of::<T>(), Box::new(ResourceGroup::<T>::new(loader)));
-    }
-    */
-
-    pub fn get_group<T: 'static + Asset>(&self) -> Option<&AssetResourceGroup<T>> {
+    pub fn get_group<T: 'static>(&self) -> Result<&AssetResourceGroup<T>, AssetError> {
         self.groups
             .get(&TypeId::of::<T>())
             .and_then(|u| u.as_any().downcast_ref())
+            .ok_or_else(|| AssetError::GroupNotFound(type_name::<T>()))
     }
 
-    pub fn get_mut_group<T>(&mut self) -> Option<&mut AssetResourceGroup<T>> where
-        T: 'static + Asset
+    pub fn get_mut_group<T>(&mut self) -> Result<&mut AssetResourceGroup<T>, AssetError> where
+        T: 'static
     {
         self.groups
             .get_mut(&TypeId::of::<T>())
             .and_then(|u| u.as_any_mut().downcast_mut())
+            .ok_or_else(|| AssetError::GroupNotFound(type_name::<T>()))
     }
 
-    pub fn get<T: 'static + Asset, S: AsRef<str>>(&self, id: S) -> Option<Weak<T>> {
+    pub fn get_asset<T: 'static, S: AsRef<str>>(&self, id: S) -> Result<&Asset<T>, AssetError> {
+        self.get_group()
+            .and_then(|g| g.get_asset(id))
+    }
+
+    pub fn get<T: 'static, S: AsRef<str>>(&self, id: S) -> Result<Ref<'_, T>, AssetError> {
         self.get_group()
             .and_then(|g| g.get(id))
+    }
+
+    pub fn get_mut<T: 'static, S: AsRef<str>>(&mut self, id: S) -> Result<RefMut<'_, T>, AssetError> {
+        self.get_mut_group()
+            .and_then(|g| g.get_mut(id))
     }
 }

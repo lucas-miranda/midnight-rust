@@ -11,5 +11,8 @@ pub enum ApplicationError {
     WindowCreationFailed(EventLoopError),
 
     #[error("window failed")]
-    WindowError(#[from] WindowError)
+    WindowError(#[from] WindowError),
+
+    #[error("init failed to execute")]
+    InitFailed(Box<dyn std::error::Error>)
 }

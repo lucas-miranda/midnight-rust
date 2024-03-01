@@ -1,10 +1,10 @@
 use std::{
     cell::{ Ref, RefMut, RefCell },
     slice::Iter,
-    rc::{Rc, Weak},
+    rc::Rc,
 };
 
-use crate::rendering::{
+use crate::{rendering::{
     backend::DrawCommand,
     shaders::{ Shader, ShaderInstance },
     texture::TextureId,
@@ -16,7 +16,7 @@ use crate::rendering::{
     TextureConfig,
     TextureView,
     Vertex,
-};
+}, resources::AssetWeak};
 
 use super::{DrawBatcherError, BatchMode};
 
@@ -132,7 +132,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     fn create_batch<'t>(
         &mut self,
         shader: &Shader,
-        texture: Option<Weak<Texture>>,
+        texture: Option<AssetWeak<Texture>>,
         configuration: (TextureId, ShaderConfig, TextureConfig),
     ) -> Result<&mut ShaderBatch<'a, V>, RenderStateError> {
         let weak_instance = match self.draw_command.shader_builder().get_instance(shader) {
@@ -145,7 +145,8 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
                     .expect(format!("Shader ({}) was dropped", shader).as_str()),
             group: BatchGroup::new(
                 texture.map(|t| {
-                    let tex = t.upgrade().expect("Failed to get texture");
+                    let tex_asset = t.upgrade().expect("Failed to get texture");
+                    let tex = tex_asset.get();
                     let (device, queue) = self.draw_command.device_queue();
                     tex.view(device, queue, configuration.2.clone())
                 }),
@@ -164,7 +165,7 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
     fn extend<'t>(
         &mut self,
         vertices: Iter<V>,
-        texture: Option<Weak<Texture>>,
+        texture: Option<AssetWeak<Texture>>,
         draw_config: DrawConfig<V>
     ) -> Result<(), RenderStateError> {
         let shader_config = draw_config
@@ -191,7 +192,7 @@ impl<'a, 'r, V> RenderState<V> for DrawBatcher<'a, 'r, V> where
         let texture_config = draw_config.texture_config.unwrap_or_default();
 
         let texture_id = match texture {
-            Some(ref t) => t.upgrade().map_or_else(|| TextureId::NONE, |v| v.id().clone()),
+            Some(ref t) => t.upgrade().map_or_else(|| TextureId::NONE, |v| v.get().id().clone()),
             None => TextureId::NONE,
         };
 

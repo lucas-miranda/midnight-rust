@@ -1,4 +1,6 @@
-use std::{slice::Iter, rc::Weak};
+use std::slice::Iter;
+use crate::resources::AssetWeak;
+
 use super::{
     DrawConfig,
     Texture,
@@ -13,7 +15,7 @@ pub trait RenderState<V> where
     fn extend(
         &mut self,
         vertices: Iter<V>,
-        texture: Option<Weak<Texture>>,
+        texture: Option<AssetWeak<Texture>>,
         draw_config: DrawConfig<V>,
     ) -> Result<(), RenderStateError>;
 }
