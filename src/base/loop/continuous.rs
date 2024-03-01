@@ -1,6 +1,11 @@
 use crate::{
     base::{ApplicationState, ApplicationError, InitState},
-    ecs::{FrameState, SystemScheduler, entity::Entities, SchedulerStep},
+    ecs::{
+        entity::Entities,
+        FrameState,
+        SchedulerStep,
+        SystemScheduler,
+    },
     input::Event,
     rendering::GraphicAdapter,
     time::Time,
@@ -45,6 +50,7 @@ impl ApplicationLoop for ContinuousLoop {
         // time
         let mut last_update_instant = Time::now();
         let mut last_render_instant = Time::now();
+        let mut last_input_instant = Time::now();
 
         // rendering
         let graphic_adapter = GraphicAdapter::with_surface_size(
@@ -101,7 +107,13 @@ impl ApplicationLoop for ContinuousLoop {
                         _ => {
                             state.input.handle(Event::from(win_event));
 
-                            //self.sys_scheduler.run(&SchedulerStep::Input, &self.entities, &mut frame_state);
+                            let delta_time = state.time.delta(&mut last_input_instant);
+                            let mut frame_state = FrameState {
+                                delta: delta_time,
+                                app: &mut state,
+                            };
+
+                            self.sys_scheduler.run(&SchedulerStep::Input, &self.entities, &mut frame_state);
                         },
                     }
                 },

@@ -8,9 +8,14 @@ pub use domain::Domain;
 pub mod entity;
 pub mod system;
 
+use strum::{EnumIter, IntoEnumIterator};
+
 use crate::{time::DeltaTime, base::ApplicationState};
 
-use self::{system::{System, SystemInterface}, entity::Entities};
+use self::{
+    entity::Entities,
+    system::{System, SystemInterface},
+};
 
 pub struct FrameState<'a> {
     pub delta: DeltaTime,
@@ -18,8 +23,9 @@ pub struct FrameState<'a> {
 }
 
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, EnumIter)]
 pub enum SchedulerStep {
+    Input,
     Update,
     Render,
 }
@@ -31,8 +37,10 @@ pub struct SystemScheduler {
 impl SystemScheduler {
     pub fn new() -> Self {
         let mut systems = HashMap::default();
-        systems.insert(SchedulerStep::Update, Vec::default());
-        systems.insert(SchedulerStep::Render, Vec::default());
+
+        for step in SchedulerStep::iter() {
+            systems.insert(step, Vec::default());
+        }
 
         Self {
             systems,
