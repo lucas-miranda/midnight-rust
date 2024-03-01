@@ -1,15 +1,10 @@
 pub mod component;
 
-mod domain;
-use std::collections::HashMap;
-
-pub use domain::Domain;
-
 pub mod entity;
 pub mod system;
 
+use std::collections::HashMap;
 use strum::{EnumIter, IntoEnumIterator};
-
 use crate::{time::DeltaTime, base::ApplicationState};
 
 use self::{
