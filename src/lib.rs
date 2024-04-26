@@ -9,5 +9,6 @@ pub mod rendering;
 pub mod resources;
 pub mod systems;
 pub mod time;
+pub mod ui;
 pub mod util;
 pub mod window;

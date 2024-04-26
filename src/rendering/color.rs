@@ -1,6 +1,6 @@
-use std::fmt::{
-    self,
-    Display,
+use std::{
+    fmt::{self, Display},
+    ops::{Add, Sub, Mul, Div, Rem},
 };
 
 use bytemuck::{Pod, Zeroable};
@@ -30,6 +30,71 @@ impl<T> Color<T> where
             g,
             b,
             a,
+        }
+    }
+}
+
+impl<T: Num> Add for Color<T> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            r: self.r + rhs.r,
+            g: self.g + rhs.g,
+            b: self.b + rhs.b,
+            a: self.a + rhs.a,
+        }
+    }
+}
+
+impl<T: Num> Sub for Color<T> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            r: self.r - rhs.r,
+            g: self.g - rhs.g,
+            b: self.b - rhs.b,
+            a: self.a - rhs.a,
+        }
+    }
+}
+
+impl<T: Num> Mul for Color<T> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            r: self.r * rhs.r,
+            g: self.g * rhs.g,
+            b: self.b * rhs.b,
+            a: self.a * rhs.a,
+        }
+    }
+}
+
+impl<T: Num> Div for Color<T> {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Self {
+            r: self.r / rhs.r,
+            g: self.g / rhs.g,
+            b: self.b / rhs.b,
+            a: self.a / rhs.a,
+        }
+    }
+}
+
+impl<T: Num> Rem for Color<T> {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Self {
+            r: self.r % rhs.r,
+            g: self.g % rhs.g,
+            b: self.b % rhs.b,
+            a: self.a % rhs.a,
         }
     }
 }
@@ -136,6 +201,7 @@ macro_rules! impl_float {
     ($($type:ty),+) => {$(
         #[allow(dead_code)]
         impl Color<$type> {
+            pub const TRANSPARENT_BLACK: Self       = Self::rgba(0.0, 0.0, 0.0, 0.0);
             pub const WHITE: Self       = Self::rgba(1.0, 1.0, 1.0, 1.0);
             pub const BLACK: Self       = Self::rgba(0.0, 0.0, 0.0, 1.0);
             pub const RED: Self         = Self::rgba(1.0, 0.0, 0.0, 1.0);

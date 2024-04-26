@@ -68,3 +68,20 @@ pub trait AssetPathLoad {
 
     fn load(path: &Path) -> Result<Self, Self::LoadError> where Self: Sized;
 }
+
+
+pub trait AssetRef<T> {
+    fn get(&self) -> Option<Ref<'_, T>>;
+    fn get_mut(&mut self) -> Option<RefMut<'_, T>>;
+}
+
+
+impl<T> AssetRef<T> for Option<Asset<T>> {
+    fn get(&self) -> Option<Ref<'_, T>> {
+        self.as_ref().map(|a| a.get())
+    }
+
+    fn get_mut(&mut self) -> Option<RefMut<'_, T>> {
+        self.as_mut().map(|a| a.get_mut())
+    }
+}

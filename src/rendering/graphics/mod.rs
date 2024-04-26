@@ -15,6 +15,8 @@ pub use text::Text;
 mod tilemap;
 pub use tilemap::Tilemap;
 
+mod rectangle;
+
 use std::any::Any;
 
 use super::{

@@ -54,10 +54,10 @@ impl<T> Size2<T> where
     pub fn convert<U>(self) -> Size2<U> where
         U: Num + NumCast
     {
-        self.trheight_convert().unwrap()
+        self.try_convert().unwrap()
     }
 
-    pub fn trheight_convert<U>(self) -> Option<Size2<U>> where
+    pub fn try_convert<U>(self) -> Option<Size2<U>> where
         U: Num + NumCast
     {
         Some(Size2::<U>::new(

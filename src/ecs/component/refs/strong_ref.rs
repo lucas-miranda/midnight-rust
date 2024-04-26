@@ -17,7 +17,7 @@ pub struct ComponentStrongRef<'a, C: 'static + Component> {
 }
 
 impl<'a, C: 'static + Component> ComponentStrongRef<'a, C> {
-    pub(super) fn new(strong: Rc<RefCell<dyn AnyComponent>>) -> Self {
+    pub(crate) fn new(strong: Rc<RefCell<dyn AnyComponent>>) -> Self {
         Self {
             strong,
             phantom: Default::default(),

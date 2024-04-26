@@ -52,7 +52,7 @@ impl<'a, 'r, V: Vertex> DrawBatcher<'a, 'r, V> {
     }
 
     pub fn flush(mut self) -> Result<(), DrawBatcherError> {
-        //println!("-> Flushing...");
+        //println!("-> Flushing ({} batches)...", self.batches.len());
         for batch in self.batches.drain(..) {
             let shader_id = batch.instance.borrow().identifier();
             //println!("-> With shader id {}", shader_id);

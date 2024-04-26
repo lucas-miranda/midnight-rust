@@ -8,7 +8,7 @@ use super::{
     AnyComponent,
     ComponentAttribute,
     ComponentEntry,
-    ComponentRef,
+    ComponentRef, ComponentStrongRef,
 };
 
 // TODO  make it a strong type around Rc<_>,
@@ -75,6 +75,18 @@ impl Components {
             .chain(self.entries.iter())
             .find_map(|c| match c.is::<C>() {
                 true => Some(c.get_ref()),
+                false => None,
+            })
+    }
+
+    pub fn get<C>(&self) -> Option<ComponentStrongRef<C>> where
+        C: AnyComponent + 'static
+    {
+        self.unique_entries
+            .values()
+            .chain(self.entries.iter())
+            .find_map(|c| match c.is::<C>() {
+                true => Some(c.get()),
                 false => None,
             })
     }

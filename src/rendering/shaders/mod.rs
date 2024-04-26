@@ -54,3 +54,10 @@ pub trait ShaderInfo {
     fn identifier(&self) -> Shader;
 }
 
+/*
+impl<T: ShaderInstance> AsRef<dyn ShaderInstance + 'static> for T {
+    fn as_ref(&self) -> &(dyn ShaderInstance + 'static) {
+        self
+    }
+}
+*/

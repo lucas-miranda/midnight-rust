@@ -22,7 +22,6 @@ use crate::{
             VertexAttribute, BindingsError, WorldViewProjectionUniforms,
         },
         GraphicAdapter,
-        Color,
         ShaderConfig,
         FrontFace,
         PolygonMode,
@@ -34,12 +33,11 @@ use crate::{
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, Pod, Zeroable)]
-pub struct DefaultUniforms {
+pub struct Uniforms {
     pub view: Matrix4x4<f32>,
-    pub color: Color<f32>,
 }
 
-impl WorldViewProjectionUniforms for DefaultUniforms {
+impl WorldViewProjectionUniforms for Uniforms {
     fn view(&self) -> &Matrix4x4<f32> {
         &self.view
     }
@@ -51,7 +49,7 @@ impl WorldViewProjectionUniforms for DefaultUniforms {
 
 pub struct DefaultShader {
     shader: Shader,
-    uniforms: DefaultUniforms,
+    uniforms: Uniforms,
     default_config: ShaderConfig,
 }
 
@@ -67,9 +65,11 @@ impl DefaultShader {
             )
             .set_vertex_attributes(vertex_attrs![
                 Float32x2,
+                Float32x2,
+                Float32x4,
             ].into_iter())
             .bindings(vec![
-                BindingsDescriptorEntry::uniform::<DefaultUniforms>(),
+                BindingsDescriptorEntry::uniform::<Uniforms>(),
             ].into_iter())
             .build()
             .into_diagnostic()
@@ -80,7 +80,7 @@ impl DefaultShader {
         &self.default_config
     }
 
-    pub fn uniforms_mut(&mut self) -> &mut DefaultUniforms {
+    pub fn uniforms_mut(&mut self) -> &mut Uniforms {
         &mut self.uniforms
     }
 }
@@ -102,7 +102,7 @@ impl ShaderInstance for DefaultShader {
 
         Self {
             shader,
-            uniforms: DefaultUniforms::default(),
+            uniforms: Uniforms::default(),
             default_config,
         }
     }

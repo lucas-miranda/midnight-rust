@@ -9,7 +9,7 @@ use super::{
     AnyComponent,
     Component,
     ComponentRef,
-    ComponentAnyRef,
+    ComponentAnyRef, ComponentStrongRef,
 };
 
 pub type RawComponentEntry = Rc<RefCell<(dyn AnyComponent + 'static)>>;
@@ -28,6 +28,13 @@ impl ComponentEntry {
             entity_id,
             component: Rc::new(RefCell::new(component)),
         }
+    }
+
+    pub fn get<'a, C>(&'a self) -> ComponentStrongRef<'a, C> where
+        C: Component + 'static
+    {
+
+        ComponentStrongRef::new(self.component.clone())
     }
 
     pub fn get_ref<C>(&self) -> ComponentRef<C> where

@@ -1,5 +1,4 @@
-mod default_shader;
-pub use default_shader::*;
+pub mod default_shader;
 
 use std::{
     rc::{Rc, Weak},
@@ -28,14 +27,16 @@ use crate::{
     },
     rendering::{
         batchers::DrawBatcher,
-        shaders::ShaderInstance,
         Color,
         DrawConfig,
         GraphicAdapter,
         Vertex,
         VertexPosition,
     },
+    resources::{Asset, AssetRef, AssetWeak},
 };
+
+use default_shader::DefaultShader;
 
 pub struct RenderSystem<V: Vertex> {
     //pub world: Matrix4x4<f32>,
@@ -43,16 +44,25 @@ pub struct RenderSystem<V: Vertex> {
     //pub projection: Matrix4x4<f32>,
 
     graphic_adapter: Weak<RefCell<GraphicAdapter>>,
-    default_shader: Rc<RefCell<DefaultShader>>,
+    default_shader: AssetWeak<DefaultShader>,
     clear_color: Color::<f32>,
     phantom: PhantomData<V>,
 }
 
 impl<V: Vertex> RenderSystem<V> {
-    pub fn new(graphic_adapter: &Rc<RefCell<GraphicAdapter>>) -> Self {
+    pub fn new(app_state: &mut ApplicationState) -> Self {
+        app_state.asset_resources.register_loader::<DefaultShader>();
+        let g = app_state.asset_resources
+                         .get_mut_group::<DefaultShader>()
+                         .unwrap();
+
+        let asset: Asset<_> = DefaultShader::new(&app_state.graphic_adapter).into();
+        let default_shader = asset.weak();
+        g.register_asset("default", asset);
+
         Self {
-            graphic_adapter: Rc::downgrade(graphic_adapter),
-            default_shader: DefaultShader::new(graphic_adapter),
+            graphic_adapter: Rc::downgrade(&app_state.graphic_adapter),
+            default_shader,
             phantom: Default::default(),
             clear_color: 0xFF236EFF.into(),
             view: Matrix4x4::default(),
@@ -90,15 +100,17 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
 
         let graphic_adapter = self.graphic_adapter.upgrade().unwrap();
 
-        {
-            let mut shader = self.default_shader.borrow_mut();
+        /*
+        //if let Some(shader) = self.default_shader.upgrade().map(|s| s.get_mut()) {
+        if let Some(mut shader) = self.default_shader.upgrade().get_mut() {
             let uniforms = shader.uniforms_mut();
             //uniforms.view = Matrix4x4::ortho(180.0, 0.0, 0.0, 320.0, -100.0, 100.0);
 
             //uniforms.view = self.view;
 
-            uniforms.color = Color::<f32>::rgb_hex(0x0000FF);
+            uniforms.color = Color::<f32>::rgba_hex(0x0000FFFF);
         }
+        */
 
         let mut adapter = graphic_adapter.borrow_mut();
 
@@ -106,8 +118,8 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
             Ok(mut draw_command) => {
                 // TODO  use default shader to clear screen
 
-                {
-                    let shader: std::cell::Ref<dyn ShaderInstance> = self.default_shader.borrow();
+                if let Some(shader) = self.default_shader.upgrade().get() {
+                    //let shader: std::cell::Ref<dyn ShaderInstance> = self.default_shader.borrow();
                     //draw_command.clear::<_, Vertex2D, _>(Color::<u8>::rgb_hex(0x46236E), &shader)
                     draw_command.clear(self.clear_color, &shader)
                                 .unwrap();
@@ -119,6 +131,7 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
 
                     //draw_batcher.register_shader(&self.default_shader);
 
+                    //println!("{} query components", query.iter_components().count());
                     for QueryEntry { component: (a, b), .. } in query.iter_components() {
                         if let Some(graphic_displayer) = a {
                             if let Some(transform) = b {
@@ -129,7 +142,8 @@ impl<V: Vertex + VertexPosition<Position = Vector2<f32>>> System for RenderSyste
                                                         .shader_config
                                                         .or_else(|| { Some(
                                                             self.default_shader
-                                                                .borrow()
+                                                                .upgrade()
+                                                                .get()?
                                                                 .default_config()
                                                                 .clone()
                                                         ) } ),

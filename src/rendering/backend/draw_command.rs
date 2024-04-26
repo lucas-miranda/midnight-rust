@@ -51,14 +51,15 @@ impl<'a> DrawCommand<'a> {
         self.shader_builder
     }
 
-    pub fn begin<'p, V, S>(
+    pub fn begin<'p, V, S, R>(
         &'p mut self,
-        shader: &'p S,
+        shader: &'p R,
         config: &ShaderConfig,
         label: wgpu::Label
     ) -> Result<RenderPass<'p, V>, DrawError> where
         V: Vertex,
-        S: Deref<Target = dyn ShaderInstance>,
+        S: 'p + ShaderInstance + ?Sized,
+        R: Deref<Target = S>,
     {
         let shader_context = self.shader_builder
             .get_mut_context(&shader.identifier())
@@ -85,11 +86,12 @@ impl<'a> DrawCommand<'a> {
         self.surface_texture.present();
     }
 
-    pub fn clear<'p, C, S>(&'p mut self, color: C, shader: &'p S) -> Result<(), DrawError> where
+    pub fn clear<'p, C, S, R>(&'p mut self, color: C, shader: &'p R) -> Result<(), DrawError> where
         C: Into<Color<f32>>,
-        S: Deref<Target = dyn ShaderInstance>,
+        S: ShaderInstance,
+        R: Deref<Target = S>,
     {
-        match self.begin::<Vertex2D, _>(shader, &ShaderConfig::default(), None) {
+        match self.begin::<Vertex2D, S, R>(shader, &ShaderConfig::default(), None) {
             Ok(pass) => pass.clear_color(color).submit().map_err(DrawError::from),
             Err(e) => Err(e),
         }

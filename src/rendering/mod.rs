@@ -14,7 +14,7 @@ mod draw_config;
 pub use draw_config::*;
 
 mod color;
-pub use color::Color;
+pub use color::*;
 
 mod render_state;
 pub use render_state::RenderState;
